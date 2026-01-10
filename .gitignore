@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Data files
+*.npz
+*.h5
+*.hdf5
+*.gwf
+*.npy
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model checkpoints and logs
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+models/
+logs/
+*.log
+
+# Training outputs
+out_dir/
+train_dir/
+metrics/
+
