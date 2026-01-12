@@ -7,10 +7,10 @@ import numpy as np
 
 import torch
 
-from .logger import Logger
+from ..logger import Logger
 
 def train(train_loader, model, criterion, device, optimizer, lr_scheduler, 
-        val_loader=None, max_epochs=1, logger=None): 
+        val_loader=None, max_epochs=2, logger=None): 
 
         # Two epochs for now 
         for epoch in range(max_epochs): 
