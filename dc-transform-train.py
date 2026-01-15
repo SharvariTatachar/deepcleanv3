@@ -47,6 +47,7 @@ train_data = train_data.normalize(mean, std)
 # aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
 
+#TODO: change the way your're building the data samples 
 K = 4 
 kw_ds = ts.KWindowDataset(train_data, K=K)
 train_loader = DataLoader(kw_ds, batch_size=4, shuffle=False, num_workers=0)
@@ -69,10 +70,14 @@ lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    max_epochs=2, logger=train_logger)
+    max_epochs=1, logger=train_logger)
 
 # with torch.no_grad(): 
 #     pred = model(x)
 
 # print("x: ", x.shape)
 # print("pred: ", pred.shape)
+
+with torch.no_grad():
+    zero_loss = torch.mean(tgt**2).item()
+    print("zero baseline:", zero_loss)

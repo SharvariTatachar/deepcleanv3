@@ -10,7 +10,7 @@ import torch
 from ..logger import Logger
 
 def train(train_loader, model, criterion, device, optimizer, lr_scheduler, 
-        val_loader=None, max_epochs=2, logger=None): 
+        val_loader=None, max_epochs=1, logger=None): 
         
         # If Logger is not given, create a default logger
         if logger is None:
