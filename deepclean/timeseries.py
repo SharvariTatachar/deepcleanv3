@@ -365,18 +365,10 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         
         return aux, target
 
-class KWindowDataset(Dataset): 
+class KWindowStackDataset(Dataset): 
     """
-    Wrapper for dc-transform-train  
-    Returns K consecutive 8-second windows concatenated along time dimension. 
-
-    base_ds[i] returns: 
-        aux: (C, L)
-        tgt: (L,) 
-
-    this returns: 
-        x: (C, K*L)
-        tgt: (K*L,)
+    Wrap a base dataset that returns 8s windows
+    Returns K consecutive 8-second windows stacked. 
     """
 
     def __init__(self, base_ds, K: int): 
@@ -394,7 +386,7 @@ class KWindowDataset(Dataset):
             aux_list.append(aux)
             tgt_list.append(tgt)
         
-        x = torch.cat(aux_list, dim=-1)
-        y = torch.cat(tgt_list, dim=-1)
-        return x, y 
+        aux_seq = torch.stack(aux_list, dim=1)  # (C, K, L)
+        tgt_seq = torch.stack(tgt_list, dim=0)  # (K, L)
+        return aux_seq, tgt_seq
     

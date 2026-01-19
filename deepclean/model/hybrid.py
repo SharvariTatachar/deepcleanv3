@@ -15,13 +15,15 @@ class HybridTransformerCNN(nn.Module):
         self.L = int(round(window_sec * fs)) 
         
         # tokens are channels 
-        self.tokenizer = tt.ChannelTokenizer(C=self.C, L=self.L, d_model)
+        self.tokenizer = tt.ChannelTokenizer(C=self.C, L=self.L, d=d_model)
         self.transformer = tt.ChannelTokenTransformer(d_model=d_model, nhead=nhead, num_layers=num_layers)
 
         self.cnn = pcc.PerChannelCNN(C, kernel_size=cnn_kernel, n_layers=cnn_layers)
         
-    
         self.readout = nn.Conv1d(C, 1, kernel_size=1)
+        
+        # Projection layer to map from token dimension d back to time dimension L
+        self.projection = nn.Linear(d_model, self.L)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
@@ -32,7 +34,15 @@ class HybridTransformerCNN(nn.Module):
         # Attention over channels 
         Z = self.transformer(Z) # (B, C, d)
 
-        # TODO: change the CNN to convolutions over each window, per channel. 
-        x_rec = self.cnn(x_rec)
-        y = self.readout(x_rec) # (B, 1, T_total)
+        # Pass transformer output directly to CNN
+        # CNN operates over the token dimension d (treating it as time dimension)
+        Z_cnn = self.cnn(Z) # (B, C, d)
+        
+        y = self.readout(Z_cnn) # (B, 1, d)
+        
+        # Project from token dimension d back to original time dimension L
+        y = y.squeeze(1)  # (B, d)
+        y = self.projection(y)  # (B, L)
+        y = y.unsqueeze(1)  # (B, 1, L)
+        
         return y 

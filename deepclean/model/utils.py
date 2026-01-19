@@ -10,7 +10,7 @@ import torch
 from ..logger import Logger
 
 def train(train_loader, model, criterion, device, optimizer, lr_scheduler, 
-        val_loader=None, max_epochs=1, logger=None): 
+        val_loader=None, max_epochs=10, logger=None): 
         
         # If Logger is not given, create a default logger
         if logger is None:
@@ -26,10 +26,13 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
             model.train()
             
             for step, (x, tgt) in enumerate(train_loader):
-                x = x.to(device)  # (B, C, T)
-                tgt = tgt.to(device)  # (B, T)
+                # if step < 3:
+                #    print("step", step, "x[0,0,0:5] =", x[0,0,:5].tolist())
+                #    print("step", step, "tgt[0,0:5]   =", tgt[0,:5].tolist())
+                x = x.to(device)  # (B, C, L)
+                tgt = tgt.to(device)  # (B, L)
 
-                pred = model(x).squeeze(1) # (B, T)
+                pred = model(x).squeeze(1) # (B, L)
                 loss = criterion(pred, tgt)
                 optimizer.zero_grad() 
                 loss.backward() 
