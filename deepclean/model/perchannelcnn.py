@@ -14,7 +14,7 @@ class PerChannelCNN(nn.Module):
     def __init__(
         self,
         num_channels: int,
-        kernel_size: int = 7,
+        kernel_size: int = 3,
         stride: int = 1,
         n_layers: int = 1,
     ):

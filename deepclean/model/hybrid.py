@@ -7,8 +7,8 @@ class HybridTransformerCNN(nn.Module):
     Input: x (B, C, L) , L = 8s * fs 
     Output: y (B, 1, L)
     """
-    def __init__(self, C:int, fs: int, window_sec: float = 8.0, d_model: int = 128,
-                 nhead: int = 4, num_layers: int = 1, cnn_kernel: int = 7, cnn_layers: int = 1):
+    def __init__(self, C:int, fs: int, window_sec: float = 8.0, d_model: int = 64,
+                 nhead: int = 2, num_layers: int = 1, cnn_kernel: int = 3, cnn_layers: int = 1):
         super().__init__()
         self.C = C 
         self.fs = fs 
@@ -23,7 +23,7 @@ class HybridTransformerCNN(nn.Module):
         self.readout = nn.Conv1d(C, 1, kernel_size=1)
         
         # Projection layer to map from token dimension d back to time dimension L
-        self.projection = nn.Linear(d_model, self.L)
+        self.projection = nn.Linear(d_model, self.L) # TODO: replace? 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
@@ -35,14 +35,14 @@ class HybridTransformerCNN(nn.Module):
         Z = self.transformer(Z) # (B, C, d)
 
         # Pass transformer output directly to CNN
-        # CNN operates over the token dimension d (treating it as time dimension)
+        # CNN operates over token dimension d 
         Z_cnn = self.cnn(Z) # (B, C, d)
         
-        y = self.readout(Z_cnn) # (B, 1, d)
+        y = self.readout(Z_cnn) # (B, 1, d)  # TODO: this linear mapping will break permutation invariance --> instead do a sum pooling or average, but you need to make sure to have enough transformer layers
         
         # Project from token dimension d back to original time dimension L
         y = y.squeeze(1)  # (B, d)
-        y = self.projection(y)  # (B, L)
+        y = self.projection(y)  # (B, L) 
         y = y.unsqueeze(1)  # (B, 1, L)
         
         return y 

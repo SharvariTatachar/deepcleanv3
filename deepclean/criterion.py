@@ -78,7 +78,7 @@ class PSDLoss(nn.Module):
     ''' Compute the power spectrum density (PSD) loss, defined 
     as the average over frequency of the PSD ratio '''
     
-    
+    # TODO: might want to edit fftlength to 2 & overlap to 0.5s 
     def __init__(self, fs=1.0, fl=110., fh=130., fftlength=1., overlap=None, 
                  asd=False, average='mean', reduction='mean', device='cpu'):
         super().__init__()
@@ -273,10 +273,10 @@ class EdgeMSELoss(nn.Module):
 class CompositePSDLoss(nn.Module):
     ''' PSD + MSE Loss with weight '''
     
-    def __init__(self, fs=1.0, fl=20., fh=500., fftlength=1., overlap=None, 
+    def __init__(self, fs=2048.0, fl=110.0, fh=130.0, fftlength=1.0, overlap=None, 
                  asd=False, average='mean', reduction='mean', psd_weight=0.5, 
                  mse_weight=0.5, edge_weight=0.0, edge_frac = 0.1, cross_psd_weight = 0.0,
-                 train_kernel = 4, batch_size=32, train_stride = 0.25, device='cpu'):
+                 train_kernel = 8, batch_size=32, train_stride = 8.0, device='cpu'):
         super().__init__()
         if reduction not in ('mean', 'sum'):
             raise ValueError(
@@ -300,26 +300,31 @@ class CompositePSDLoss(nn.Module):
         self.edge_weight = edge_weight
                 
     def forward(self, pred, target):
+        # Accept (B, 1, L) or (B, L)
+        if pred.ndim == 3:
+            pred = pred.squeeze(1)
+        if target.ndim == 3:
+            target = target.squeeze(1)
 
         if self.psd_weight == 0:
             psd_loss = 0
         else:
-            psd_loss  = self.psd_weight  * self.psd_loss  (pred, target)
+            psd_loss  = self.psd_weight  * self.psd_loss(pred, target)
 
         if self.cross_psd_weight == 0:
             cross_psd_loss = 0
         else:
-            cross_psd_loss  = self.cross_psd_weight  * self.cross_psd_loss  (pred, target)
+            cross_psd_loss  = self.cross_psd_weight  * self.cross_psd_loss(pred, target)
 
             
         if self.mse_weight == 0:
             mse_loss = 0
         else:
-            mse_loss  = self.mse_weight  * self.mse_loss  (pred, target)
+            mse_loss  = self.mse_weight  * self.mse_loss(pred, target)
 
         if self.edge_weight == 0:
             edge_loss = 0
         else:
-            edge_loss  = self.edge_weight  * self.edge_loss  (pred, target)
+            edge_loss  = self.edge_weight  * self.edge_loss(pred, target)
         
         return (psd_loss + cross_psd_loss + mse_loss + edge_loss)

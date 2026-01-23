@@ -11,14 +11,14 @@ class ChannelTokenizer(nn.Module):
     def __init__(self, C: int, L: int, d: int):
         super().__init__()
         self.C, self.L, self.d = C, L, d
-        self.proj = nn.Linear(L, d)
+        self.proj = nn.Linear(L, d)  # TODO: replace with CNN several layers 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, C, L)
         B, C, L = x.shape
         assert C == self.C and L == self.L
         x2 = x.reshape(B*C, L) # to apply linear layer to each channel separately. 
-        z2 = self.proj(x2) # (B * C, d), TODO: replace with something lighter 
+        z2 = self.proj(x2) # (B * C, d) 
         Z = z2.reshape(B, C, self.d)
         return Z
 
@@ -31,8 +31,8 @@ class ChannelTokenTransformer(nn.Module):
 
     def __init__(
         self,
-        d_model: int = 128,
-        nhead: int = 4,
+        d_model: int = 64,
+        nhead: int = 2,
         num_layers: int = 1,
         dim_feedforward: int = 256,
         dropout: float = 0.1,

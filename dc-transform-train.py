@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import deepclean as dc 
 import deepclean.timeseries as ts 
+import deepclean.criterion
 import deepclean.model as model 
 import deepclean.model.hybrid as hy
 import deepclean.model.utils as utils
@@ -31,13 +32,21 @@ device = utils.get_device('mps')
 train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=8.0, pad_mode='median')
 val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=8.0, pad_mode='median')
 
-
+t0 = 1378403243
 train_data.read('combined_data.npz', channels='channels.ini',
-    start_time=1378403243, end_time=1378403243+3072, fs=2048)  
-# val_data.read('combined_data.npz', channels='channels.ini',
-#     start_time=1378403243, end_time=1378403243+3072, fs=2048) 
+    start_time=t0, end_time=t0+2048, fs=2048)  
+
+val_data.read('combined_data.npz', channels='channels.ini',
+    start_time=t0+2048, end_time=t0+3072, fs=2048) 
+
+print('train windows: ', len(train_data))
+print('val windows: ', len(val_data))
+# test_data.read('compined_data.npz', channels='channels.ini', 
+#     start_time=t0+2560, end_time=t0+3072, fs=2048)
+
 train_data = train_data.bandpass(110, 130, order=8, channels='target')
 val_data = val_data.bandpass(110, 130, order=8, channels='target')
+# test_data = test_data.bandpass(110, 130, order=8, channels='target')
 
 
 # filter pad default from deepclean-prod, is 5: 
@@ -45,30 +54,50 @@ filt_pad = 5
 fs = 2048 # from info.txt 
 train_data.data = train_data.data[:, int(filt_pad * fs):-int(filt_pad * fs)]
 val_data.data = val_data.data[:, int(filt_pad * fs):-int(filt_pad * fs)]
+# test_data.data = test_data.data[:, int(filt_pad * fs):-int(filt_pad * fs)]
 
 mean = train_data.mean 
 std = train_data.std 
 train_data = train_data.normalize()
 val_data = val_data.normalize(mean, std)
+# test_data = test_data.normalize(mean, std)
 
 # aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
 
-train_loader = DataLoader(train_data, batch_size=4, shuffle=True, num_workers=0)
-val_loader = DataLoader(val_data, batch_size=4, shuffle=True, num_workers=0)
+train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
+val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
 x, tgt = next(iter(train_loader))
-print('x: ', x.shape)  # (B, C, L) 
-print('tgt: ', tgt.shape) # (B, L)
+# print('x: ', x.shape)  # (B, C, L) 
+# print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=128, nhead=4, num_layers=1,
-                                       cnn_kernel=7, cnn_layers=1)
+                                       d_model=64, nhead=2, num_layers=1,
+                                       cnn_kernel=3, cnn_layers=1)
 
 # print('expected: (B,C, K*L)=', (x.shape[0], x.shape[1], K * model.L))
 model = model.to(device)
 
-criterion = nn.MSELoss() # TODO: change to composite PSD loss  
-optimizer = optim.Adam(model.parameters(), lr = 1e-3)
+criterion = nn.MSELoss() 
+# fft_length = 1.0
+# overlap = 0.5
+# psd_weight= 0.0
+# mse_weight= 1.0
+# coh_weight = 0.0 
+# tf_weight = 0.0 
+# criterion = dc.criterion.CompositePSDLoss(
+#     fs, 
+#     110, 
+#     130,
+#     fftlength=fft_length,
+#     overlap=overlap, 
+#     psd_weight=psd_weight, 
+#     mse_weight=mse_weight,
+#     reduction='mean',  # TODO: check this 
+#     device=device, 
+#     average='mean'
+# )
+optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
@@ -83,5 +112,6 @@ utils.train(
 # print("pred: ", pred.shape)
 
 with torch.no_grad():
-    zero_loss = torch.mean(tgt**2).item()
-    print("zero baseline:", zero_loss)
+    x, y = next(iter(val_loader))
+    x, y = x.to(device), y.to(device)
+   
