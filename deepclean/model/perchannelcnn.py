@@ -1,52 +1,43 @@
 import torch
 import torch.nn as nn
-class PerChannelCNN(nn.Module):
+
+class Downsampler(nn.Module): 
     """
-    Depthwise 1D CNN over time.
-
-    - Processes each channel independently (groups = C).
-    - No mixing between channels inside this block.
-
-    Input:  x of shape (batch, C, T)
-    Output: y of shape (batch, C, T_out)  (T_out can equal T if stride=1)
+    Downsample time using AvgPool1d layers
+    Input: x (B, C, L)
+    Output: y (B, C, d)
     """
 
-    def __init__(
-        self,
-        num_channels: int,
-        kernel_size: int = 3,
-        stride: int = 1,
-        n_layers: int = 1,
-    ):
+    def __init__(self, n_layers: int = 5, kernel_size: int = 2, stride: int = 2): 
         super().__init__()
-        padding = (kernel_size -1) // 2 
+        self.pools = nn.ModuleList([
+            nn.AvgPool1d(kernel_size=kernel_size, stride=stride)
+            for _ in range(n_layers)
+        ])
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor: 
+        B, C, L = x.shape
+        y = x.reshape(B * C, 1, L) # pooling per channel (separately)
+        for pool in self.pools: 
+            y = pool(y)
+        L_out = y.shape[-1]
+        y = y.reshape(B, C, L_out)
+        return y 
 
-        layers = []
-        in_channels = num_channels
-        out_channels = num_channels
 
-        for _ in range(n_layers):
-            layers.append(
-                nn.Conv1d(
-                    in_channels=in_channels,
-                    out_channels=out_channels,
-                    kernel_size=kernel_size,
-                    stride=stride,
-                    padding=padding,
-                    groups=num_channels,  # depthwise: independent per channel
-                    bias=True,
-                )
-            )
-            layers.append(nn.BatchNorm1d(num_channels))
-            layers.append(nn.Tanh())  # or nn.ReLU(), etc.
+class Upsampler(nn.Module): 
+    """
+    Upsample back and smooth using Conv layer 
+    Input: y (B, 1, L_ds)
+    Output: y_up (B, 1, L)
+    """
+    def __init__(self, n_layers: int = 5, mode: str = "linear"):
+        super().__init__()
+        self.ups = nn.ModuleList([nn.Upsample(scale_factor=2, mode=mode, align_corners=False)
+                                  for _ in range(n_layers)])
+        self.smooth = nn.Conv1d(1, 1, kernel_size=7, padding=3)
 
-        self.net = nn.Sequential(*layers)
-
-    def forward(self, x):
-        """
-        x: (batch, C, T)
-        returns: (batch, C, T_out)
-        """
-        # B, C, T = x.shape
-        # assert C == self.num_channels, "Channel dim mismatch"
-        return self.net(x)
+    def forward(self, y: torch.Tensor) -> torch.Tensor:
+        for up in self.ups:
+            y = up(y)
+        return self.smooth(y)

@@ -29,15 +29,18 @@ logging.info('Create training directory: {}'.format(train_dir))
 
 
 device = utils.get_device('mps')
-train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=8.0, pad_mode='median')
-val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=8.0, pad_mode='median')
+train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
+val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
+# TODO: overlap for validation set might have to be less than for training
 
-t0 = 1378403243
+t0 = 1378403243 
+
+# not using the full 3072s 
 train_data.read('combined_data.npz', channels='channels.ini',
-    start_time=t0, end_time=t0+2048, fs=2048)  
+    start_time=t0, end_time=t0+1024, fs=2048)  
 
 val_data.read('combined_data.npz', channels='channels.ini',
-    start_time=t0+2048, end_time=t0+3072, fs=2048) 
+    start_time=t0+1024, end_time=t0+2048, fs=2048) 
 
 print('train windows: ', len(train_data))
 print('val windows: ', len(val_data))
@@ -62,8 +65,8 @@ train_data = train_data.normalize()
 val_data = val_data.normalize(mean, std)
 # test_data = test_data.normalize(mean, std)
 
-# aux_patch, tgt_patch = train_data[0]
-# print(aux_patch.shape, tgt_patch.shape)
+aux_patch, tgt_patch = train_data[0]
+print(aux_patch.shape, tgt_patch.shape)
 
 train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
 val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
@@ -72,38 +75,19 @@ x, tgt = next(iter(train_loader))
 # print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=64, nhead=2, num_layers=1,
-                                       cnn_kernel=3, cnn_layers=1)
-
-# print('expected: (B,C, K*L)=', (x.shape[0], x.shape[1], K * model.L))
+                                       d_model=512, nhead=16, num_layers=1,
+                                       cnn_kernel=2, cnn_layers=5)
 model = model.to(device)
 
 criterion = nn.MSELoss() 
-# fft_length = 1.0
-# overlap = 0.5
-# psd_weight= 0.0
-# mse_weight= 1.0
-# coh_weight = 0.0 
-# tf_weight = 0.0 
-# criterion = dc.criterion.CompositePSDLoss(
-#     fs, 
-#     110, 
-#     130,
-#     fftlength=fft_length,
-#     overlap=overlap, 
-#     psd_weight=psd_weight, 
-#     mse_weight=mse_weight,
-#     reduction='mean',  # TODO: check this 
-#     device=device, 
-#     average='mean'
-# )
+
 optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=10, logger=train_logger)
+    val_loader=val_loader, max_epochs=1, logger=train_logger)
 
 # with torch.no_grad(): 
 #     pred = model(x)
