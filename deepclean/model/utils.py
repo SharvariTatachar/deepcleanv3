@@ -47,6 +47,17 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
                 if step % 10 == 0: 
                     logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
 
+
+            # print("x", x.shape, x.dtype, x.device)
+            # print("tgt", tgt.shape, tgt.dtype)
+            # print("pred", pred.shape, pred.dtype)
+
+            # print("tgt mean/std", tgt.mean().item(), tgt.std().item())
+            # print("pred mean/std", pred.mean().item(), pred.std().item())
+
+            # print("tgt max abs", tgt.abs().max().item())
+            # print("pred max abs", pred.abs().max().item())
+
             # Compute average training loss
             train_loss /= len(train_loader.dataset)
             

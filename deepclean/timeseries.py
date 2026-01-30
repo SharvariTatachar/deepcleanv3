@@ -365,28 +365,16 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         
         return aux, target
 
-class KWindowStackDataset(Dataset): 
+class SingleExampleDataset(Dataset): 
     """
-    Wrap a base dataset that returns 8s windows
-    Returns K consecutive 8-second windows stacked. 
+    Wrap a dataset to use one fixed index
     """
-
-    def __init__(self, base_ds, K: int): 
-        self.base = base_ds 
-        self.K = K 
-
+    def __init__(self, base_ds, fixed_idx: int =0): 
+        self.base_ds = base_ds
+        self.fixed_idx = fixed_idx
+    
     def __len__(self): 
-        return max(0, len(self.base) - (self.K -1))
+        return 1
     
-    def __getitem__(self, idx): 
-        aux_list = []
-        tgt_list = [] 
-        for k in range(self.K): 
-            aux, tgt = self.base[idx + k]
-            aux_list.append(aux)
-            tgt_list.append(tgt)
-        
-        aux_seq = torch.stack(aux_list, dim=1)  # (C, K, L)
-        tgt_seq = torch.stack(tgt_list, dim=0)  # (K, L)
-        return aux_seq, tgt_seq
-    
+    def __getitem__(self, idx):
+        return self.base_ds[self.fixed_idx]

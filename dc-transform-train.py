@@ -42,8 +42,8 @@ train_data.read('combined_data.npz', channels='channels.ini',
 val_data.read('combined_data.npz', channels='channels.ini',
     start_time=t0+1024, end_time=t0+2048, fs=2048) 
 
-print('train windows: ', len(train_data))
-print('val windows: ', len(val_data))
+# print('train windows: ', len(train_data))
+# print('val windows: ', len(val_data))
 # test_data.read('compined_data.npz', channels='channels.ini', 
 #     start_time=t0+2560, end_time=t0+3072, fs=2048)
 
@@ -66,10 +66,13 @@ val_data = val_data.normalize(mean, std)
 # test_data = test_data.normalize(mean, std)
 
 aux_patch, tgt_patch = train_data[0]
-print(aux_patch.shape, tgt_patch.shape)
-
-train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
-val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
+# print(aux_patch.shape, tgt_patch.shape)
+single_train = ts.SingleDataset(train_data, fixed_id=0)
+train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
+single_val = ts.SingleDataset(val_data, fixed_id=0)
+val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_worker=0)
+# train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
+# val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
 x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
@@ -82,20 +85,16 @@ model = model.to(device)
 criterion = nn.MSELoss() 
 
 optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
-lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
+lr_scheduler = None
+# lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=1, logger=train_logger)
+    val_loader=val_loader, max_epochs=5, logger=train_logger)
 
-# with torch.no_grad(): 
-#     pred = model(x)
 
-# print("x: ", x.shape)
-# print("pred: ", pred.shape)
-
-with torch.no_grad():
-    x, y = next(iter(val_loader))
-    x, y = x.to(device), y.to(device)
+# with torch.no_grad():
+    # pred = model(x)
+    # print('pred shape: ', pred.shape)
    

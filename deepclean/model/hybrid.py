@@ -13,12 +13,16 @@ class HybridTransformerCNN(nn.Module):
         self.C = C 
         self.fs = fs 
         self.L = int(round(window_sec * fs)) 
+        self.d_model = d_model
         
-        self.downsample = pcc.Downsampler(cnn_layers)
+        self.downsample = pcc.Downsampler(C, cnn_layers)
        
         self.transformer = tt.ChannelTokenTransformer(d_model=d_model, nhead=nhead, num_layers=num_layers)
         
-        self.upsample = pcc.Upsampler(cnn_layers)
+        self.upsample = pcc.Upsampler(C, cnn_layers)
+        self.chan_gate = nn.Sequential(
+            nn.Linear(self.d_model, 1),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
@@ -32,12 +36,19 @@ class HybridTransformerCNN(nn.Module):
         # Attention over channels 
         Z = self.transformer(x_ds) # (B, C, d)
         # print("transformer: ", Z.shape)
-        
-        # Sum-poolreadout (preserves permutation invariance over channels)
-        # Or mean-pool
-        y_ds = Z.sum(dim=1, keepdim=True) # (B, 1, d) 
 
         # Upsampler 
-        y = self.upsample(y_ds) 
-        # print('upsampler: ', y.shape)
+        y_1 = self.upsample(Z) # (B, C, L)
+
+        # Mean-poolreadout (preserves permutation invariance over channels)
+        # Replace with weighted mean? 
+        # y = y_1.mean(dim=1, keepdim=True) # (B, 1, L) 
+
+        scores = self.chan_gate(Z).squeeze(-1)
+        alpha = torch.softmax(scores, dim=1)
+        alpha = alpha.unsqueeze(-1)
+        # print("alpha shape:", alpha.shape)
+        # print("alpha sum over C (should be ~1):", alpha.sum(dim=1)[0, :10])
+        # print("alpha min/max:", alpha.min().item(), alpha.max().item())
+        y = (alpha * y_1).sum(dim=1, keepdim=True) # (B, 1, L)
         return y 
