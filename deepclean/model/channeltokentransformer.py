@@ -1,32 +1,11 @@
 import torch
 import torch.nn as nn
 
-
-# class ChannelTokenizer(nn.Module): 
-#     """
-#     Input: x (B, C, L)
-#     Output: z (B, C, d)
-#     Encode one token length L (8s x 2048 Hz) to a summary d
-#     """
-#     def __init__(self, C: int, L: int, d: int):
-#         super().__init__()
-#         self.C, self.L, self.d = C, L, d
-#         self.proj = nn.Linear(L, d)  # TODO: replace with CNN several layers 
-
-#     def forward(self, x: torch.Tensor) -> torch.Tensor:
-#         # x: (B, C, L)
-#         B, C, L = x.shape
-#         assert C == self.C and L == self.L
-#         x2 = x.reshape(B*C, L) # to apply linear layer to each channel separately. 
-#         z2 = self.proj(x2) # (B * C, d) 
-#         Z = z2.reshape(B, C, self.d)
-#         return Z
-
 class ChannelTokenTransformer(nn.Module):
     """
     Tokens: channels (sequence length C)
     Attention operates over channels
-    Input/Output: (B, C, L)
+    Input/Output: (B, C, 1)
     """
 
     def __init__(
@@ -51,8 +30,8 @@ class ChannelTokenTransformer(nn.Module):
 
     def forward(self, Z):
         """
-        Z: (B, C, L) 
-        returns: (B, C, L)
+        Z: (B, C, 1) 
+        returns: (B, C, 1)
         """
         return self.encoder(Z)
          

@@ -15,40 +15,33 @@ class HybridTransformerCNN(nn.Module):
         self.L = int(round(window_sec * fs)) 
         self.d_model = d_model
         
-        self.downsample = pcc.Downsampler(C, cnn_layers)
-       
+        self.downsample = pcc.PerChannelDownsampler(self.C)
         self.transformer = tt.ChannelTokenTransformer(d_model=d_model, nhead=nhead, num_layers=num_layers)
-        
-        self.upsample = pcc.Upsampler(C, cnn_layers)
-        self.chan_gate = nn.Sequential(
-            nn.Linear(self.d_model, 1),
-        )
+        self.upsample = pcc.Upsampler()
+       
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         B, C, L = x.shape 
         assert C == self.C and L == self.L 
 
-        # Downsampler 
-        x_ds = self.downsample(x)  # (B, C, d)
+        # Per-channel downsampler  
+        x_ds = self.downsample(x)  # (B, C, F, Tds)
         # print("downsampler: ", x_ds.shape)
 
-        # Attention over channels 
-        Z = self.transformer(x_ds) # (B, C, d)
-        # print("transformer: ", Z.shape)
+        # Reshaping, each timestep gets passed to transformer: 
+        B, C, F, Tds = x_ds.shape 
+        y_bt = x_ds.permute(0,3,1,2).contiguous().view(B*Tds, C, F)
+
+        # print('transformer input: ', y_bt.shape)
+        z_bt= self.transformer(y_bt) 
+        z = z_bt.view(B, Tds, C, F).permute(0, 2, 3, 1).contiguous()
+        # print("back to grid: ", z.shape)
+
+        # Sum pooling over transformer output 
+        z_pooled = z.sum(dim=1) # (B, F, Tds)
 
         # Upsampler 
-        y_1 = self.upsample(Z) # (B, C, L)
+        y = self.upsample(z_pooled) # (B, 1, L)
 
-        # Mean-poolreadout (preserves permutation invariance over channels)
-        # Replace with weighted mean? 
-        # y = y_1.mean(dim=1, keepdim=True) # (B, 1, L) 
-
-        scores = self.chan_gate(Z).squeeze(-1)
-        alpha = torch.softmax(scores, dim=1)
-        alpha = alpha.unsqueeze(-1)
-        # print("alpha shape:", alpha.shape)
-        # print("alpha sum over C (should be ~1):", alpha.sum(dim=1)[0, :10])
-        # print("alpha min/max:", alpha.min().item(), alpha.max().item())
-        y = (alpha * y_1).sum(dim=1, keepdim=True) # (B, 1, L)
         return y 

@@ -365,7 +365,7 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         
         return aux, target
 
-class SingleExampleDataset(Dataset): 
+class SingleDataset(Dataset): 
     """
     Wrap a dataset to use one fixed index
     """

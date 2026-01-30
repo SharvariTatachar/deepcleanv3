@@ -67,10 +67,10 @@ val_data = val_data.normalize(mean, std)
 
 aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
-single_train = ts.SingleDataset(train_data, fixed_id=0)
+single_train = ts.SingleDataset(train_data, fixed_idx=0)
 train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
-single_val = ts.SingleDataset(val_data, fixed_id=0)
-val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_worker=0)
+single_val = ts.SingleDataset(val_data, fixed_idx=0)
+val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_workers=0)
 # train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
 # val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
 x, tgt = next(iter(train_loader))
@@ -78,7 +78,7 @@ x, tgt = next(iter(train_loader))
 # print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=512, nhead=16, num_layers=1,
+                                       d_model=128, nhead=8, num_layers=1,
                                        cnn_kernel=2, cnn_layers=5)
 model = model.to(device)
 
@@ -91,7 +91,7 @@ lr_scheduler = None
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=5, logger=train_logger)
+    val_loader=val_loader, max_epochs=200, logger=train_logger)
 
 
 # with torch.no_grad():
