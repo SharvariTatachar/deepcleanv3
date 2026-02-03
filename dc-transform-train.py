@@ -78,7 +78,7 @@ x, tgt = next(iter(train_loader))
 # print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=1,
+                                       d_model=128, nhead=8, num_layers=3,
                                        cnn_kernel=2, cnn_layers=5)
 model = model.to(device)
 
