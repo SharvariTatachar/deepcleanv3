@@ -36,10 +36,10 @@ t0 = 1378403243
 
 # not using the full 3072s 
 train_data.read('combined_data.npz', channels='channels.ini',
-    start_time=t0, end_time=t0+1024, fs=2048)  
+    start_time=t0, end_time=t0+1536, fs=2048)  
 
 val_data.read('combined_data.npz', channels='channels.ini',
-    start_time=t0+1024, end_time=t0+2048, fs=2048) 
+    start_time=t0+1536, end_time=t0+3072, fs=2048) 
 
 # print('train windows: ', len(train_data))
 # print('val windows: ', len(val_data))
@@ -66,12 +66,12 @@ val_data = val_data.normalize(mean, std)
 
 aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
-single_train = ts.SingleDataset(train_data, fixed_idx=0)
-train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
-single_val = ts.SingleDataset(val_data, fixed_idx=0)
-val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_workers=0)
-# train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
-# val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
+# single_train = ts.SingleDataset(train_data, fixed_idx=0)
+# train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
+# single_val = ts.SingleDataset(val_data, fixed_idx=0)
+# val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_workers=0)
+train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
+val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
 x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
@@ -81,7 +81,19 @@ model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
                                        cnn_kernel=2, cnn_layers=5)
 model = model.to(device)
 
-criterion = nn.MSELoss() 
+# criterion = nn.MSELoss() 
+criterion = dc.criterion.CompositePSDLoss(
+    fs=2048,
+    fl=110,
+    fh=130,
+    fftlength=2,
+    overlap=None,
+    psd_weight=1.0,
+    mse_weight=0.0,
+    reduction='sum',
+    device=device,
+    average='mean'
+)
 
 optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
 lr_scheduler = None
