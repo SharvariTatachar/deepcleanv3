@@ -45,4 +45,4 @@ logs/
 out_dir/
 train_dir/
 metrics/
-
+data/

@@ -27,7 +27,7 @@ logging.basicConfig(
 )
 logging.info('Create training directory: {}'.format(train_dir))
 
-device = utils.get_device('mps')
+device = utils.get_device('cuda')
 train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
 val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
 # TODO: overlap for validation set might have to be less than for training

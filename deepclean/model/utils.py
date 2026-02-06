@@ -26,9 +26,6 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
             model.train()
             
             for step, (x, tgt) in enumerate(train_loader):
-                # if step < 3:
-                #    print("step", step, "x[0,0,0:5] =", x[0,0,:5].tolist())
-                #    print("step", step, "tgt[0,0:5]   =", tgt[0,:5].tolist())
                 x = x.to(device)  # (B, C, L)
                 tgt = tgt.to(device)  # (B, L)
 
@@ -47,16 +44,6 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
                 if step % 10 == 0: 
                     logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
 
-
-            # print("x", x.shape, x.dtype, x.device)
-            # print("tgt", tgt.shape, tgt.dtype)
-            # print("pred", pred.shape, pred.dtype)
-
-            # print("tgt mean/std", tgt.mean().item(), tgt.std().item())
-            # print("pred mean/std", pred.mean().item(), pred.std().item())
-
-            # print("tgt max abs", tgt.abs().max().item())
-            # print("pred max abs", pred.abs().max().item())
 
             # Compute average training loss
             train_loss /= len(train_loader.dataset)
@@ -100,16 +87,9 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
         logging.info(f"Training completed. Final train loss: {train_loss:.6f}")
 
 def get_device(device):
-    ''' Convenient function to set up hardward '''
+    ''' Convenient function to set up hardware '''
     if device.lower() == 'cpu':
         device = torch.device('cpu')
-    elif device.lower() == 'mps': 
-        if torch.backends.mps.is_available(): 
-            device = torch.device('mps')
-            logger.info(f'-Use device: {device}')
-        else: 
-            logging.warning('No mps available. Use CPU instead.')
-            device = torch.device('cpu')
     elif 'cuda' in device.lower():
         if torch.cuda.is_available():
             device = torch.device(device)
@@ -122,5 +102,6 @@ def get_device(device):
         logger.info('- Use device: {}'.format(torch.cuda.get_device_name(device)))
         logger.info('- Total memory: {:.4f} GB'.format(total_memory))
     else:
-        logger.info('- Use device: CPU -- TODO: change this')
+        logger.info('- Use device: CPU')
     return device
+
