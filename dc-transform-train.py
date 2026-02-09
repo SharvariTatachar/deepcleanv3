@@ -96,8 +96,8 @@ criterion = dc.criterion.CompositePSDLoss(
 )
 
 optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
-lr_scheduler = None
-# lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
+
+lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
