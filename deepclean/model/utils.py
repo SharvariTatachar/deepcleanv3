@@ -90,6 +90,13 @@ def get_device(device):
     ''' Convenient function to set up hardware '''
     if device.lower() == 'cpu':
         device = torch.device('cpu')
+    elif device.lower() == 'mps':
+        if torch.backends.mps.is_available():
+            device = torch.device('mps')
+            logger.info(f'-Use device: {device}')
+        else:
+            logging.warning('No MPS available. Use CPU instead.')
+            device = torch.device('cpu')
     elif 'cuda' in device.lower():
         if torch.cuda.is_available():
             device = torch.device(device)

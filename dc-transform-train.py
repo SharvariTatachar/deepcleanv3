@@ -78,7 +78,7 @@ x, tgt = next(iter(train_loader))
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
                                        d_model=128, nhead=8, num_layers=3,
-                                       cnn_kernel=2, cnn_layers=5)
+                                       cnn_kernel=2, cnn_layers=5, n_iters=3)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
