@@ -102,7 +102,7 @@ lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=10, logger=train_logger)
+    val_loader=val_loader, max_epochs=1, logger=train_logger)
 
 
 # with torch.no_grad():
