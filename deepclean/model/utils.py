@@ -41,8 +41,8 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
                 else:
                     train_loss += loss.item()
                     
-                if step % 10 == 0: 
-                    logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
+                # if step % 10 == 0: 
+                #     logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
 
 
             # Compute average training loss

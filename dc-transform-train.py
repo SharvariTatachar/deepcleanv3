@@ -30,15 +30,15 @@ logging.info('Create training directory: {}'.format(train_dir))
 device = utils.get_device('cuda')
 train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
 val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
-# TODO: overlap for validation set might have to be less than for training
+
 
 t0 = 1378403243 
 
 # not using the full 3072s 
-train_data.read('combined_data.npz', channels='channels.ini',
+train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
     start_time=t0, end_time=t0+1536, fs=2048)  
 
-val_data.read('combined_data.npz', channels='channels.ini',
+val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
     start_time=t0+1536, end_time=t0+3072, fs=2048) 
 
 # print('train windows: ', len(train_data))
@@ -70,8 +70,8 @@ aux_patch, tgt_patch = train_data[0]
 # train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
 # single_val = ts.SingleDataset(val_data, fixed_idx=0)
 # val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_workers=0)
-train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=0)
-val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=0)
+train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=4)
+val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=4)
 x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
@@ -102,7 +102,7 @@ lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=200, logger=train_logger)
+    val_loader=val_loader, max_epochs=10, logger=train_logger)
 
 
 # with torch.no_grad():
