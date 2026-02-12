@@ -66,10 +66,7 @@ val_data = val_data.normalize(mean, std)
 
 aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
-# single_train = ts.SingleDataset(train_data, fixed_idx=0)
-# train_loader = DataLoader(single_train, batch_size=1, shuffle=False, num_workers=0)
-# single_val = ts.SingleDataset(val_data, fixed_idx=0)
-# val_loader = DataLoader(single_val, batch_size=1, shuffle=False, num_workers=0)
+
 train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=4)
 val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=4)
 x, tgt = next(iter(train_loader))

@@ -17,6 +17,7 @@ ENV/
 *.hdf5
 *.gwf
 *.npy
+*.out
 
 # Jupyter Notebook
 .ipynb_checkpoints

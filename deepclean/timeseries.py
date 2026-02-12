@@ -324,7 +324,9 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         self.kernel = kernel
         self.stride = stride
         self.pad_mode = pad_mode
-        
+        # self.windows = data.unfold(1, self.kernel, self.stride).permute(1, 0, 2) 
+        # TODO: does this handle the overlap between windows? 
+
     def __len__(self):
         """ Return the number of stride """
         nsamp = self.data.shape[-1]
@@ -347,7 +349,8 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         stride = int(self.stride * self.fs)
         idx_start = idx * stride
         idx_stop = idx_start + kernel
-        data = self.data[:, idx_start: idx_stop].copy()
+        data = self.data[:, idx_start: idx_stop].copy() # TODO: replace with .unfold() in init 
+        # data = self.windows[idx] 
         
         # apply padding if needed
         nsamp = data.shape[-1]
@@ -357,7 +360,7 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
             
         # separate into target HOFT and aux channel
         target = data[self.target_idx]
-        aux = np.delete(data, self.target_idx, axis=0)
+        aux = np.delete(data, self.target_idx, axis=0) # TODO: delete() -- other options?
             
         # convert into Tensor
         target = torch.Tensor(target)

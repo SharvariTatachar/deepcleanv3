@@ -1,6 +1,6 @@
 #!/bin/bash 
 #SBATCH --job-name=train 
-#SBATCH --account=gts-pli77
+#SBATCH --account=gts-pli77-ideas_l40s
 #SBATCH --partition=gpu-l40s
 #SBATCH --qos=inferno
 #SBATCH --nodes=1
