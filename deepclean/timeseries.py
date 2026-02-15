@@ -328,27 +328,67 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         self.k_samples = int(self.kernel * self.fs)
         self.s_samples = int(self.stride * self.fs)
 
+        # Built later 
+        self.windows = None 
+        self.aux_indices = None 
+
+        # total_samples = self.data.shape[-1]
+        # rem = (total_samples - self.k_samples) % self.s_samples
+        # if rem !=0: 
+        #     pad_needed = self.s_samples - rem 
+        #     self.data = np.pad(self.data, ((0, 0), (0, pad_needed)), mode=self.pad_mode)
+       
+        # if isinstance(self.data, np.ndarray): 
+        #     self.data = torch.from_numpy(self.data)
+
+        # self.windows = self.data.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
+        # # Shape: (num_windows, channels, kernel_samples)
+        # all_indices = torch.arange(len(self.channels)) 
+        # self.aux_indices = all_indices[all_indices!=self.target_idx]
+
+    def build_windows(self): 
+        if not isinstance(self.data, np.ndarray): 
+            raise ValueError('Data not loaded yet. Call read()/fetch()/download_data() first.')
+        if self.channels is None or len(self.channels) == 0: 
+            raise ValueError('Channels not loaded yet.')
+        if self.target_idx is None: 
+            raise ValueError('target_idx is not set yet')
+        
         total_samples = self.data.shape[-1]
         rem = (total_samples - self.k_samples) % self.s_samples
         if rem !=0: 
             pad_needed = self.s_samples - rem 
             self.data = np.pad(self.data, ((0, 0), (0, pad_needed)), mode=self.pad_mode)
        
-        if isinstance(self.data, np.ndarray): 
+       if isinstance(self.data, np.ndarray):
             self.data = torch.from_numpy(self.data)
 
         self.windows = self.data.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
         # Shape: (num_windows, channels, kernel_samples)
+
         all_indices = torch.arange(len(self.channels)) 
         self.aux_indices = all_indices[all_indices!=self.target_idx]
 
+    def read(self, *args, **kwargs): 
+        super().fetch(*args, **kwargs)
+        self.build_windows()
+    
+    def fetch(self, *args, **kwargs): 
+        super().fetch(*args, **kwargs)
+        self.build_windows()
+    
     def __len__(self):
         """ Return the number of stride """
+        if self.windows is None: 
+            raise ValueError('Windows not built.')
         return self.windows.size(0)
         
     def __getitem__(self, idx):
         """ Get sample Tensor for a given index """
         # check if idx is valid:
+        if self.windows is None: 
+            raise ValueError('Windows not built.')
+            
         if idx < 0:
             idx +=  self.__len__()
         if idx >= self.__len__():
@@ -363,16 +403,16 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         
         return aux, target
 
-class SingleDataset(Dataset): 
-    """
-    Wrap a dataset to use one fixed index
-    """
-    def __init__(self, base_ds, fixed_idx: int =0): 
-        self.base_ds = base_ds
-        self.fixed_idx = fixed_idx
+# class SingleDataset(Dataset): 
+#     """
+#     Wrap a dataset to use one fixed index
+#     """
+#     def __init__(self, base_ds, fixed_idx: int =0): 
+#         self.base_ds = base_ds
+#         self.fixed_idx = fixed_idx
     
-    def __len__(self): 
-        return 1
+#     def __len__(self): 
+#         return 1
     
-    def __getitem__(self, idx):
-        return self.base_ds[self.fixed_idx]
+#     def __getitem__(self, idx):
+#         return self.base_ds[self.fixed_idx]
