@@ -28,8 +28,8 @@ logging.basicConfig(
 logging.info('Create training directory: {}'.format(train_dir))
 
 device = utils.get_device('cuda')
-train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
-val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median')
+train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
+val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
 
 
 t0 = 1378403243 
@@ -99,7 +99,7 @@ lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=1, logger=train_logger)
+    val_loader=val_loader, max_epochs=10, logger=train_logger)
 
 
 # with torch.no_grad():

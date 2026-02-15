@@ -317,23 +317,34 @@ class TimeSeriesDataset:
 class TimeSeriesSegmentDataset(TimeSeriesDataset):
     """ Torch timeseries dataset with segment """
     
-    def __init__(self, kernel, stride, pad_mode='median'):
+    def __init__(self, kernel, stride, pad_mode='median', fs=2048):
         
         super().__init__()
         
         self.kernel = kernel
         self.stride = stride
+        self.fs = fs 
         self.pad_mode = pad_mode
-        # self.windows = data.unfold(1, self.kernel, self.stride).permute(1, 0, 2) 
-        # TODO: does this handle the overlap between windows? 
+        self.k_samples = int(self.kernel * self.fs)
+        self.s_samples = int(self.stride * self.fs)
+
+        total_samples = self.data.shape[-1]
+        rem = (total_samples - self.k_samples) % self.s_samples
+        if rem !=0: 
+            pad_needed = self.s_samples - rem 
+            self.data = np.pad(self.data, ((0, 0), (0, pad_needed)), mode=self.pad_mode)
+       
+        if isinstance(self.data, np.ndarray): 
+            self.data = torch.from_numpy(self.data)
+
+        self.windows = self.data.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
+        # Shape: (num_windows, channels, kernel_samples)
+        all_indices = torch.arange(len(self.channels)) 
+        self.aux_indices = all_indices[all_indices!=self.target_idx]
 
     def __len__(self):
         """ Return the number of stride """
-        nsamp = self.data.shape[-1]
-        kernel = int(self.kernel * self.fs)
-        stride = int(self.stride * self.fs)
-        n_stride = int(np.ceil((nsamp - kernel) / stride) + 1)
-        return max(0, n_stride)
+        return self.windows.size(0)
         
     def __getitem__(self, idx):
         """ Get sample Tensor for a given index """
@@ -344,27 +355,11 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
             raise IndexError(
                 f'index {idx} is out of bound with size {self.__len__()}.')
         
-        # get sample
-        kernel = int(self.kernel * self.fs)
-        stride = int(self.stride * self.fs)
-        idx_start = idx * stride
-        idx_stop = idx_start + kernel
-        data = self.data[:, idx_start: idx_stop].copy() # TODO: replace with .unfold() in init 
-        # data = self.windows[idx] 
+        data = self.windows[idx] 
         
-        # apply padding if needed
-        nsamp = data.shape[-1]
-        if nsamp < kernel:
-            pad = kernel - nsamp
-            data = np.pad(data, ((0, 0), (0, pad)), mode=self.pad_mode)
-            
         # separate into target HOFT and aux channel
         target = data[self.target_idx]
-        aux = np.delete(data, self.target_idx, axis=0) # TODO: delete() -- other options?
-            
-        # convert into Tensor
-        target = torch.Tensor(target)
-        aux = torch.Tensor(aux)
+        aux = data[self.aux_indices]
         
         return aux, target
 
