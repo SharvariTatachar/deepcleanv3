@@ -1,7 +1,7 @@
 #!/bin/bash 
 #SBATCH --job-name=train 
 #SBATCH --account=gts-pli77-ideas_l40s
-#SBATCH --partition=gpu-l40s
+#SBATCH --partition=gpu
 #SBATCH --qos=inferno
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8 

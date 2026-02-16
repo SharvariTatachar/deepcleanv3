@@ -360,17 +360,17 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
             pad_needed = self.s_samples - rem 
             self.data = np.pad(self.data, ((0, 0), (0, pad_needed)), mode=self.pad_mode)
        
-       if isinstance(self.data, np.ndarray):
-            self.data = torch.from_numpy(self.data)
+        if isinstance(self.data, np.ndarray):
+            data_t = torch.from_numpy(self.data).float()
 
-        self.windows = self.data.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
+        self.windows = data_t.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
         # Shape: (num_windows, channels, kernel_samples)
 
         all_indices = torch.arange(len(self.channels)) 
         self.aux_indices = all_indices[all_indices!=self.target_idx]
 
     def read(self, *args, **kwargs): 
-        super().fetch(*args, **kwargs)
+        super().read(*args, **kwargs)
         self.build_windows()
     
     def fetch(self, *args, **kwargs): 
