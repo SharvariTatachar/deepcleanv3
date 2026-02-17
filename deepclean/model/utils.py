@@ -20,49 +20,60 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
         num_batches = len(train_loader)
         model.train()
         
+        scaler = torch.amp.GradScaler('cuda', enabled=(device.type=="cuda"))
         for epoch in range(max_epochs): 
             # Training phase
-            train_loss = 0.0
             model.train()
-            
+            train_loss_sum = torch.zeros((), device=device)
+            n_seen = 0 
             for step, (x, tgt) in enumerate(train_loader):
-                x = x.to(device)  # (B, C, L)
-                tgt = tgt.to(device)  # (B, L)
+                x = x.to(device, non_blocking=True)  # (B, C, L)
+                tgt = tgt.to(device, non_blocking=True)  # (B, L)
 
-                pred = model(x).squeeze(1) # (B, L)
-                loss = criterion(pred, tgt)
-                optimizer.zero_grad() 
-                loss.backward() 
-                optimizer.step()
+                optimizer.zero_grad(set_to_none=True) 
+                with torch.amp.autocast('cuda', enabled=(device.type=="cuda")):
+                    pred = model(x).squeeze(1) # (B, L)
+                    loss = criterion(pred, tgt)
+                
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
                 # Accumulate training loss
                 if hasattr(criterion, 'reduction') and criterion.reduction == 'mean':
-                    train_loss += loss.item() * len(x)
+                    train_loss_sum += loss.detach() * x.size(0)
+                    n_seen += x.size(0)
                 else:
-                    train_loss += loss.item()
+                    train_loss_sum += loss.detach()
+                    n_seen +=1 
                     
                 # if step % 10 == 0: 
                 #     logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
 
 
             # Compute average training loss
-            train_loss /= len(train_loader.dataset)
+            train_loss = (train_loss_sum/n_seen).item()
             
             # Validation phase (if val_loader is provided)
             val_loss = 0.0
             if val_loader is not None:
                 model.eval()
+                val_loss_sum = torch.zeros((), device=device)
+                n_val = 0
                 with torch.no_grad():
                     for x_val, tgt_val in val_loader:
-                        x_val = x_val.to(device)
-                        tgt_val = tgt_val.to(device)
-                        pred_val = model(x_val).squeeze(1)
-                        loss_val = criterion(pred_val, tgt_val)
+                        x_val = x_val.to(device, non_blocking=True)
+                        tgt_val = tgt_val.to(device, non_blocking=True)
+                        with torch.amp.autocast('cuda', enabled=(device.type=="cuda")):
+                            pred_val = model(x_val).squeeze(1)
+                            loss_val = criterion(pred_val, tgt_val)
                         if hasattr(criterion, 'reduction') and criterion.reduction == 'mean':
-                            val_loss += loss_val.item() * len(x_val)
+                            val_loss_sum += loss_val.detach() * x_val.size(0)
+                            n_val += x_val.size(0)
                         else:
-                            val_loss += loss_val.item()
-                val_loss /= len(val_loader.dataset)
+                            val_loss_sum += loss_val.detach()
+                            n_val += 1
+                val_loss = (val_loss_sum/n_val).item()
                 model.train()
             
             # Update LR scheduler at end of epoch
@@ -107,6 +118,7 @@ def get_device(device):
         total_memory = torch.cuda.get_device_properties(device).total_memory
         total_memory *= 1e-9 # convert bytes to Gb
         logger.info('- Use device: {}'.format(torch.cuda.get_device_name(device)))
+        logger.info("device count: {}".format(torch.cuda.device_count()))
         logger.info('- Total memory: {:.4f} GB'.format(total_memory))
     else:
         logger.info('- Use device: CPU')

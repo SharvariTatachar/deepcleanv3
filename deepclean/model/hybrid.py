@@ -8,7 +8,7 @@ class HybridTransformerCNN(nn.Module):
     Output: y (B, 1, L)
     """
     def __init__(self, C:int, fs: int, window_sec: float = 8.0, d_model: int = 512,
-                 nhead: int = 16, num_layers: int = 3, cnn_kernel: int = 2, cnn_layers: int = 5, n_iters: int = 3):
+                 nhead: int = 16, num_layers: int = 2, cnn_kernel: int = 2, cnn_layers: int = 5, n_iters: int = 2):
         super().__init__()
         self.n_iters = n_iters 
         self.C = C 
@@ -33,7 +33,7 @@ class HybridTransformerCNN(nn.Module):
             assert C == self.C and L == self.L 
 
             # Per-channel downsampler  
-            x_ds = self.downsample(x)  # (B, C, F, Tds)
+            x_ds = self.downsample(x_curr)  # (B, C, F, Tds)
             # print("downsampler: ", x_ds.shape)
 
             # Reshaping, each timestep gets passed to transformer: 

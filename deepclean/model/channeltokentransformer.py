@@ -11,9 +11,9 @@ class ChannelTokenTransformer(nn.Module):
     def __init__(
         self,
         d_model: int,
-        nhead: int = 16,
-        num_layers: int = 3,
-        dim_feedforward: int = 4096,
+        nhead: int = 8,
+        num_layers: int = 2,
+        dim_feedforward: int = 512,
         dropout: float = 0.1,
     ):
         super().__init__()

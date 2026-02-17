@@ -28,8 +28,12 @@ class PerChannelDownsampler(nn.Module):
         self.downsampler.add_module('CONV_5', nn.Conv1d(64, 128, kernel_size=7, stride=2, padding=3))
         self.downsampler.add_module('BN_5', nn.BatchNorm1d(128))
         self.downsampler.add_module('TANH_5', nn.Tanh())
-        
-    
+        self.downsampler.add_module('CONV_6', nn.Conv1d(128, 128, kernel_size=7, stride=2, padding=3))
+        self.downsampler.add_module('BN_6', nn.BatchNorm1d(128))
+        self.downsampler.add_module('TANH_6', nn.Tanh())        
+        self.downsampler.add_module('CONV_7', nn.Conv1d(128, 128, kernel_size=7, stride=2, padding=3))
+        self.downsampler.add_module('BN_7', nn.BatchNorm1d(128))
+        self.downsampler.add_module('TANH_7', nn.Tanh())        
     def forward(self, x: torch.Tensor) -> torch.Tensor: 
         B, C, L = x.shape 
         x = x.reshape(B*C, 1, L)
@@ -60,11 +64,16 @@ class Upsampler(nn.Module):
         self.upsampler.add_module('CONVTRANS_4', nn.ConvTranspose1d(16, 8, kernel_size=7, stride=2, padding=3, output_padding=1))
         self.upsampler.add_module('BN_4', nn.BatchNorm1d(8))
         self.upsampler.add_module('TANH_4', nn.Tanh())
-        self.upsampler.add_module('CONVTRANS_5', nn.ConvTranspose1d(8, 1, kernel_size=7, stride=2, padding=3, output_padding=1))
+        self.upsampler.add_module('CONVTRANS_5', nn.ConvTranspose1d(8, 8, kernel_size=7, stride=2, padding=3, output_padding=1))
+        self.upsampler.add_module('BN_5', nn.BatchNorm1d(8))
+        self.upsampler.add_module('TANH_5', nn.Tanh())
+        self.upsampler.add_module('CONVTRANS_6', nn.ConvTranspose1d(8, 8, kernel_size=7, stride=2, padding=3, output_padding=1))
+        self.upsampler.add_module('BN_6', nn.BatchNorm1d(8))
+        self.upsampler.add_module('TANH_6', nn.Tanh())
+        self.upsampler.add_module('CONVTRANS_7', nn.ConvTranspose1d(8, 1, kernel_size=7, stride=2, padding=3, output_padding=1))
         # self.upsampler.add_module('BN_5', nn.BatchNorm1d(1))
         # self.upsampler.add_module('TANH_5', nn.Tanh())
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, C, L = x.shape 
         y = self.upsampler(x)
         return y 

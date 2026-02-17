@@ -332,20 +332,6 @@ class TimeSeriesSegmentDataset(TimeSeriesDataset):
         self.windows = None 
         self.aux_indices = None 
 
-        # total_samples = self.data.shape[-1]
-        # rem = (total_samples - self.k_samples) % self.s_samples
-        # if rem !=0: 
-        #     pad_needed = self.s_samples - rem 
-        #     self.data = np.pad(self.data, ((0, 0), (0, pad_needed)), mode=self.pad_mode)
-       
-        # if isinstance(self.data, np.ndarray): 
-        #     self.data = torch.from_numpy(self.data)
-
-        # self.windows = self.data.unfold(-1, self.k_samples, self.s_samples).transpose(0, 1) 
-        # # Shape: (num_windows, channels, kernel_samples)
-        # all_indices = torch.arange(len(self.channels)) 
-        # self.aux_indices = all_indices[all_indices!=self.target_idx]
-
     def build_windows(self): 
         if not isinstance(self.data, np.ndarray): 
             raise ValueError('Data not loaded yet. Call read()/fetch()/download_data() first.')

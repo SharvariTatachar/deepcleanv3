@@ -27,6 +27,7 @@ logging.basicConfig(
 )
 logging.info('Create training directory: {}'.format(train_dir))
 
+BS = 8 
 device = utils.get_device('cuda')
 train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
 val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
@@ -41,8 +42,6 @@ train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/comb
 val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
     start_time=t0+1536, end_time=t0+3072, fs=2048) 
 
-# print('train windows: ', len(train_data))
-# print('val windows: ', len(val_data))
 # test_data.read('compined_data.npz', channels='channels.ini', 
 #     start_time=t0+2560, end_time=t0+3072, fs=2048)
 
@@ -64,18 +63,42 @@ train_data = train_data.normalize()
 val_data = val_data.normalize(mean, std)
 # test_data = test_data.normalize(mean, std)
 
+# TODO: rebuild windows after .data changes , should restructure this 
+train_data.build_windows()
+val_data.build_windows()
 aux_patch, tgt_patch = train_data[0]
 # print(aux_patch.shape, tgt_patch.shape)
 
-train_loader = DataLoader(train_data, batch_size=4, shuffle=False, num_workers=4)
-val_loader = DataLoader(val_data, batch_size=4, shuffle=False, num_workers=4)
+print('train windows: ', len(train_data))
+print('val windows: ', len(val_data))
+
+train_loader = DataLoader(
+    train_data,
+    batch_size=BS, 
+    shuffle=False, 
+    num_workers=4,
+    pin_memory=True, 
+    persistent_workers=True, 
+    prefetch_factor=4, 
+    drop_last=True
+    )
+val_loader = DataLoader(
+    val_data, 
+    batch_size=BS, 
+    shuffle=False, 
+    num_workers=4, 
+    pin_memory=True, 
+    persistent_workers=True, 
+    prefetch_factor=4,
+    drop_last=True)
+    
 x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=3,
-                                       cnn_kernel=2, cnn_layers=5, n_iters=3)
+                                       d_model=128, nhead=8, num_layers=2,
+                                       cnn_kernel=2, cnn_layers=7, n_iters=2)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -87,7 +110,7 @@ criterion = dc.criterion.CompositePSDLoss(
     overlap=None,
     psd_weight=1.0,
     mse_weight=0.0,
-    reduction='sum',
+    reduction='mean',
     device=device,
     average='mean'
 )
@@ -99,7 +122,7 @@ lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 train_logger = dc.logger.Logger(outdir=train_dir, metrics=['loss'])
 utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=10, logger=train_logger)
+    val_loader=val_loader, max_epochs=20, logger=train_logger)
 
 
 # with torch.no_grad():
