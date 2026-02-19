@@ -27,32 +27,42 @@ class HybridTransformerCNN(nn.Module):
             for it < n_iters-1: downsample -> transformer -> upsample, repeat
             for it == n_iters-1: downsample -> transformer -> sum pooling -> upsample 
         """
-        x_curr = x # (B, C, L)
-        for it in range(self.n_iters): 
-            B, C, L = x_curr.shape 
-            assert C == self.C and L == self.L 
+        # x_curr = x # (B, C, L)
+        # for it in range(self.n_iters): 
+        #     B, C, L = x_curr.shape 
+        #     assert C == self.C and L == self.L 
 
-            # Per-channel downsampler  
-            x_ds = self.downsample(x_curr)  # (B, C, F, Tds)
-            # print("downsampler: ", x_ds.shape)
+        #     # Per-channel downsampler  
+        #     x_ds = self.downsample(x_curr)  # (B, C, F, Tds)
+        #     # print("downsampler: ", x_ds.shape)
 
-            # Reshaping, each timestep gets passed to transformer: 
-            B, C, F, Tds = x_ds.shape 
-            y_bt = x_ds.permute(0,3,1,2).contiguous().view(B*Tds, C, F)
+        #     # Reshaping, each timestep gets passed to transformer: 
+        #     B, C, F, Tds = x_ds.shape 
+        #     y_bt = x_ds.permute(0,3,1,2).contiguous().view(B*Tds, C, F)
 
-            # print('transformer input: ', y_bt.shape)
-            z_bt= self.transformer(y_bt) 
-            z = z_bt.view(B, Tds, C, F).permute(0, 2, 3, 1).contiguous()
-            # print("back to grid: ", z.shape)
-            if it < self.n_iters-1: 
-                z_pc = z.view(B*C, F, Tds) 
-                y_pc = self.upsample(z_pc)
-                x_curr = y_pc.view(B, C, L) # feed to next iter
+        #     # print('transformer input: ', y_bt.shape)
+        #     z_bt= self.transformer(y_bt) 
+        #     z = z_bt.view(B, Tds, C, F).permute(0, 2, 3, 1).contiguous()
+        #     # print("back to grid: ", z.shape)
+        #     if it < self.n_iters-1: 
+        #         z_pc = z.view(B*C, F, Tds) 
+        #         y_pc = self.upsample(z_pc)
+        #         x_curr = y_pc.view(B, C, L) # feed to next iter
             
-            # Final iteration 
-            # Sum pooling over transformer output 
-            else: 
-                z_pooled = z.sum(dim=1) # (B, F, Tds)
-                y = self.upsample(z_pooled) # (B, 1, L)
+        #     # Final iteration 
+        #     # Sum pooling over transformer output 
+        #     else: 
+        #         z_pooled = z.sum(dim=1) # (B, F, Tds)
+        #         y = self.upsample(z_pooled) # (B, 1, L)
 
-        return y 
+        # return y 
+
+        # Per channel downsampler 
+        x_ds = self.downsample(x)
+        print('downsampler: ', x_ds.shape) # (B, F, Tds)
+        y = self.upsample(x_ds) # (B, 1, L)
+        return y  
+
+        
+
+
