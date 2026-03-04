@@ -11,6 +11,7 @@ import deepclean.criterion
 import deepclean.model as model 
 import deepclean.model.hybrid as hy
 import deepclean.model.utils as utils
+import deepclean.model.deepclean
 
 train_dir = 'train_dir'
 os.makedirs(train_dir, exist_ok=True)
@@ -27,10 +28,10 @@ logging.basicConfig(
 )
 logging.info('Create training directory: {}'.format(train_dir))
 
-BS = 8 
+BS = 32
 device = utils.get_device('cuda')
 train_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
-val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median', fs=2048)
+val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=4, pad_mode='median', fs=2048)
 
 
 t0 = 1378403243 
@@ -40,7 +41,7 @@ train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/comb
     start_time=t0, end_time=t0+1536, fs=2048)  
 
 val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
-    start_time=t0+1536, end_time=t0+3072, fs=2048) 
+    start_time=t0+1556, end_time=t0+3072, fs=2048) # 20s gap between train/val 
 
 # test_data.read('compined_data.npz', channels='channels.ini', 
 #     start_time=t0+2560, end_time=t0+3072, fs=2048)
@@ -96,9 +97,11 @@ x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
 
-model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=2,
-                                       cnn_kernel=2, cnn_layers=7, n_iters=2)
+# model = hy.HybridTransformerCNN(C=x.shape[1], fs=2048, window_sec=8.0,
+#                                        d_model=128, nhead=8, num_layers=2,
+#                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
+
+model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -115,7 +118,7 @@ criterion = dc.criterion.CompositePSDLoss(
     average='mean'
 )
 
-optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-3)
+optimizer = optim.Adam(model.parameters(), lr = 1e-3, weight_decay=1e-5)
 
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 

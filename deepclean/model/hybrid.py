@@ -59,8 +59,12 @@ class HybridTransformerCNN(nn.Module):
 
         # Per channel downsampler 
         x_ds = self.downsample(x)
-        print('downsampler: ', x_ds.shape) # (B, F, Tds)
-        y = self.upsample(x_ds) # (B, 1, L)
+        
+        # Naive sum-pooling 
+        x_pooled = x_ds.sum(dim=1) # (B, F, Tds)
+
+        # Upsampler 
+        y = self.upsample(x_pooled) # (B, 1, L)
         return y  
 
         
