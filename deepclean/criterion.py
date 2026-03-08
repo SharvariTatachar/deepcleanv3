@@ -273,7 +273,7 @@ class EdgeMSELoss(nn.Module):
 class CompositePSDLoss(nn.Module):
     ''' PSD + MSE Loss with weight '''
     
-    def __init__(self, fs=2048.0, fl=110.0, fh=130.0, fftlength=1.0, overlap=None, 
+    def __init__(self, fs=2048.0, fl=110.0, fh=130.0, fftlength=2.0, overlap=None, 
                  asd=False, average='mean', reduction='mean', psd_weight=0.5, 
                  mse_weight=0.5, edge_weight=0.0, edge_frac = 0.1, cross_psd_weight = 0.0,
                  train_kernel = 8, batch_size=32, train_stride = 8.0, device='cpu'):
