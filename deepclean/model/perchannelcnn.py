@@ -38,7 +38,9 @@ class PerChannelDownsampler(nn.Module):
         B, C, L = x.shape 
         x = x.reshape(B*C, 1, L)
         y = self.downsampler(x)
-        y = y.reshape(B, C, 128, y.shape[-1])
+        F = y.shape[1]
+        Tds = y.shape[-1]
+        y = y.reshape(B, C, F, Tds)
         return y 
 
 

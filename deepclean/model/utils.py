@@ -21,6 +21,12 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
         model.train()
         
         scaler = torch.amp.GradScaler('cuda', enabled=(device.type=="cuda"))
+        
+        history = {
+            'train_loss': [], 
+            'val_loss': [],
+        }
+
         for epoch in range(max_epochs): 
             # Training phase
             model.train()
@@ -80,6 +86,9 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
             if lr_scheduler is not None:
                 lr_scheduler.step()
             
+            history['train_loss'].append(train_loss) 
+            history['val_loss'].append(val_loss) 
+           
             # Update metrics with logger
             last_batch_idx = num_batches - 1
             logger.update_metric(train_loss, val_loss, 'loss', epoch, 
@@ -96,6 +105,7 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
             logger.save_model(model, epoch)
             
         logging.info(f"Training completed. Final train loss: {train_loss:.6f}")
+        return history
 
 def get_device(device):
     ''' Convenient function to set up hardware '''

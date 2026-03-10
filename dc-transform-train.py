@@ -2,11 +2,13 @@ import os
 import torch 
 import pickle
 import argparse
+import json 
 import configparser
 import logging
 import torch.nn as nn 
 import torch.optim as optim
 from torch.utils.data import DataLoader 
+
 
 import deepclean as dc 
 import deepclean.timeseries as ts 
@@ -30,7 +32,7 @@ def parse_cmd():
         prog=os.path.basename(__file__), usage='%(prog)s [options]')
 
     parser.add_argument('--config', help='Path to .ini config', type=str,
-                        default='configs/110train.ini')
+                        default='configs/118train.ini')
     
     # dataset arguments
     parser.add_argument('--train-t0', help='GPS of the first sample',
@@ -267,11 +269,11 @@ x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
 
-model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=2,
-                                       cnn_kernel=2, cnn_layers=7, n_iters=2)
+# model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
+#                                        d_model=128, nhead=8, num_layers=2,
+#                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
 
-# model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
+model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -293,9 +295,28 @@ optimizer = optim.Adam(model.parameters(), lr=params.lr, weight_decay=params.wei
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 
 train_logger = dc.logger.Logger(outdir=params.train_dir, metrics=['loss'])
-utils.train(
+history = utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger)
+
+run_data = {
+    'model_name': model.__class__.__name__,
+    'batch_size': params.batch_size, 
+    'lr': params.lr, 
+    'weight_decay': params.weight_decay, 
+    'max_epochs': params.max_epochs, 
+    'train_t0': params.train_t0, 
+    'train_duration': params.train_duration,
+    'fs': params.fs, 
+    'filt_fl': params.filt_fl,
+    'filt_fh': params.filt_fh,
+    'history': history
+}
+
+run_path = os.path.join(params.train_dir, 'dc_run1.json')
+with open(run_path, 'w') as f: 
+    json.dump(run_data, f, indent=2)
+
 
 
 # with torch.no_grad():
