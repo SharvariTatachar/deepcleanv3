@@ -269,11 +269,11 @@ x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
 
-# model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
-#                                        d_model=128, nhead=8, num_layers=2,
-#                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
+model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
+                                       d_model=128, nhead=8, num_layers=2,
+                                       cnn_kernel=2, cnn_layers=7, n_iters=2)
 
-model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
+# model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -313,7 +313,7 @@ run_data = {
     'history': history
 }
 
-run_path = os.path.join(params.train_dir, 'dc_run1.json')
+run_path = os.path.join(params.train_dir, 'perchannel_run4.json')
 with open(run_path, 'w') as f: 
     json.dump(run_data, f, indent=2)
 
