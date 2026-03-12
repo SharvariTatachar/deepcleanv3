@@ -35,6 +35,7 @@ ENV/
 Thumbs.db
 
 # Model checkpoints and logs
+*.png
 *.pth
 *.pt
 *.ckpt
