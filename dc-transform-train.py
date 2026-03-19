@@ -32,7 +32,7 @@ def parse_cmd():
         prog=os.path.basename(__file__), usage='%(prog)s [options]')
 
     parser.add_argument('--config', help='Path to .ini config', type=str,
-                        default='configs/118train.ini')
+                        default='configs/118dcv3train.ini')
     
     # dataset arguments
     parser.add_argument('--train-t0', help='GPS of the first sample',
@@ -270,7 +270,7 @@ x, tgt = next(iter(train_loader))
 # print('tgt: ', tgt.shape) # (B, L)
 
 model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=2,
+                                       d_model=128, nhead=8, num_layers=3,
                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
 
 # model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
@@ -313,7 +313,7 @@ run_data = {
     'history': history
 }
 
-run_path = os.path.join(params.train_dir, 'perchannel_run4.json')
+run_path = os.path.join(params.train_dir, 'channel-embed-full.json')
 with open(run_path, 'w') as f: 
     json.dump(run_data, f, indent=2)
 

@@ -12,7 +12,7 @@ class ChannelTokenTransformer(nn.Module):
         self,
         d_model: int,
         nhead: int = 8,
-        num_layers: int = 2,
+        num_layers: int = 3,
         dim_feedforward: int = 512,
         dropout: float = 0.1,
     ):

@@ -1,6 +1,16 @@
 import torch
 import torch.nn as nn
 
+class ConvBlock(nn.Module): 
+    def __init__(self, cin: int, cout: int): 
+        super().__init__()
+        self.conv = nn.Conv1d(cin, cout, kernel_size=7, stride=2, padding=3)
+        self.bn = nn.BatchNorm1d(cout)
+        self.act = nn.Tanh()
+    
+    def forward(self, x: torch.Tensor):
+        return self.act(self.bn(self.conv(x)))
+
 class PerChannelDownsampler(nn.Module): 
     """
     Downsample each channel separately using DeepClean methodology.
@@ -9,39 +19,93 @@ class PerChannelDownsampler(nn.Module):
 
     """
 
-    def __init__(self, C: int): 
+    def __init__(self, C: int, emb_dim: int): 
         super().__init__()
+        self.C = C 
+        self.emb_dim = emb_dim 
+        self.channel_emb = nn.Embedding(C, emb_dim)
+
+        # Conv blocks 
+        self.block1 = ConvBlock(1, 8)
+        self.block2 = ConvBlock(8, 16)
+        self.block3 = ConvBlock(16, 32)
+        self.block4 = ConvBlock(32, 64)
+        self.block5 = ConvBlock(64, 128)
+        self.block6 = ConvBlock(128, 128)
+        self.block7 = ConvBlock(128, 128)
+
+        # channel embedding projections 
+        self.proj1 = nn.Linear(emb_dim, 8)
+        self.proj2 = nn.Linear(emb_dim, 16)
+        self.proj3 = nn.Linear(emb_dim, 32)
+        self.proj4 = nn.Linear(emb_dim, 64)
+        self.proj5 = nn.Linear(emb_dim, 128)
+        self.proj6 = nn.Linear(emb_dim, 128)
+        self.proj7 = nn.Linear(emb_dim, 128)
+       
+    def add_channel_emb(
+        self, 
+        y: torch.Tensor, 
+        proj: nn.Linear, 
+    ): 
+        """
+        y: (B, C, F, T)
+        proj: projects base channel embedding -> F 
+        """
+        B, C, F, T = y.shape 
+        channel_ids = torch.arange(C, device=y.device)
+        e = self.channel_emb(channel_ids)
+        e = proj(e)
+        # Broadcast (C, F) -> (B, C, F, T)
+        e = e.unsqueeze(0).unsqueeze(-1)
+        return y + e 
         
-        self.downsampler = nn.Sequential() 
-        self.downsampler.add_module('CONV_1', nn.Conv1d(1, 8, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_1', nn.BatchNorm1d(8))
-        self.downsampler.add_module('TANH_1', nn.Tanh())
-        self.downsampler.add_module('CONV_2', nn.Conv1d(8, 16, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_2', nn.BatchNorm1d(16))
-        self.downsampler.add_module('TANH_2', nn.Tanh())
-        self.downsampler.add_module('CONV_3', nn.Conv1d(16, 32, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_3', nn.BatchNorm1d(32))
-        self.downsampler.add_module('TANH_3', nn.Tanh())
-        self.downsampler.add_module('CONV_4', nn.Conv1d(32, 64, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_4', nn.BatchNorm1d(64))
-        self.downsampler.add_module('TANH_4', nn.Tanh())
-        self.downsampler.add_module('CONV_5', nn.Conv1d(64, 128, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_5', nn.BatchNorm1d(128))
-        self.downsampler.add_module('TANH_5', nn.Tanh())
-        self.downsampler.add_module('CONV_6', nn.Conv1d(128, 128, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_6', nn.BatchNorm1d(128))
-        self.downsampler.add_module('TANH_6', nn.Tanh())        
-        self.downsampler.add_module('CONV_7', nn.Conv1d(128, 128, kernel_size=7, stride=2, padding=3))
-        self.downsampler.add_module('BN_7', nn.BatchNorm1d(128))
-        self.downsampler.add_module('TANH_7', nn.Tanh())        
     def forward(self, x: torch.Tensor) -> torch.Tensor: 
         B, C, L = x.shape 
-        x = x.reshape(B*C, 1, L)
-        y = self.downsampler(x)
-        F = y.shape[1]
-        Tds = y.shape[-1]
-        y = y.reshape(B, C, F, Tds)
-        return y 
+
+        # Block 1
+        y = x.reshape(B * C, 1, L)
+        y = self.block1(y)                                 # (B*C, 8, T1)
+        y = y.reshape(B, C, 8, y.shape[-1])               # (B, C, 8, T1)
+        y = self.add_channel_emb(y, self.proj1)
+
+        # Block 2
+        y = y.reshape(B * C, 8, y.shape[-1])
+        y = self.block2(y)                                 # (B*C, 16, T2)
+        y = y.reshape(B, C, 16, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj2)
+
+        # Block 3
+        y = y.reshape(B * C, 16, y.shape[-1])
+        y = self.block3(y)                                 # (B*C, 32, T3)
+        y = y.reshape(B, C, 32, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj3)
+
+        # Block 4
+        y = y.reshape(B * C, 32, y.shape[-1])
+        y = self.block4(y)                                 # (B*C, 64, T4)
+        y = y.reshape(B, C, 64, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj4)
+
+        # Block 5
+        y = y.reshape(B * C, 64, y.shape[-1])
+        y = self.block5(y)                                 # (B*C, 128, T5)
+        y = y.reshape(B, C, 128, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj5)
+
+        # Block 6
+        y = y.reshape(B * C, 128, y.shape[-1])
+        y = self.block6(y)                                 # (B*C, 128, T6)
+        y = y.reshape(B, C, 128, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj6)
+
+        # Block 7
+        y = y.reshape(B * C, 128, y.shape[-1])
+        y = self.block7(y)                                 # (B*C, 128, T7)
+        y = y.reshape(B, C, 128, y.shape[-1])
+        y = self.add_channel_emb(y, self.proj7)
+
+        return y
 
 
 class Upsampler(nn.Module): 

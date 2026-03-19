@@ -16,7 +16,7 @@ class HybridTransformerCNN(nn.Module):
         self.L = int(round(window_sec * fs)) 
         self.d_model = d_model
         
-        self.downsample = pcc.PerChannelDownsampler(self.C)
+        self.downsample = pcc.PerChannelDownsampler(self.C, emb_dim = 32)
         self.transformer = tt.ChannelTokenTransformer(d_model=d_model, nhead=nhead, num_layers=num_layers)
         self.upsample = pcc.Upsampler()
        
@@ -63,11 +63,18 @@ class HybridTransformerCNN(nn.Module):
         
         x_ds = self.downsample(x)
         
-        # Naive sum-pooling 
-        x_pooled = x_ds.sum(dim=1) # (B, F, T')
+        # Reshape, so each timestep gets passed to transformer 
+        B, C, F, Tds = x_ds.shape 
+        y_bt = x_ds.permute(0,3,1,2).contiguous().view(B*Tds, C, F)
+
+        # print('transformer input: ', y_bt.shape)
+        z_bt= self.transformer(y_bt) 
+        z = z_bt.view(B, Tds, C, F).permute(0, 2, 3, 1).contiguous()
+        # Mean-pooling 
+        z_pooled = z.mean(dim=1) # (B, F, T')
 
         # Upsampler 
-        y = self.upsample(x_pooled) # (B, 1, L)
+        y = self.upsample(z_pooled) # (B, 1, L)
         return y  
 
         
