@@ -13,7 +13,7 @@ class ChannelTokenTransformer(nn.Module):
         d_model: int,
         nhead: int = 8,
         num_layers: int = 3,
-        dim_feedforward: int = 512,
+        dim_feedforward: int = 256,
         dropout: float = 0.1,
     ):
         super().__init__()

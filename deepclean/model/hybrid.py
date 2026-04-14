@@ -7,7 +7,7 @@ class HybridTransformerCNN(nn.Module):
     Input: x (B, C, L) , L = 8s * fs 
     Output: y (B, 1, L)
     """
-    def __init__(self, C:int, fs: int, window_sec: float = 8.0, d_model: int = 512,
+    def __init__(self, C:int, fs: int, window_sec: float = 8.0, d_model: int = 128,
                  nhead: int = 16, num_layers: int = 2, cnn_kernel: int = 2, cnn_layers: int = 5, n_iters: int = 2):
         super().__init__()
         self.n_iters = n_iters 

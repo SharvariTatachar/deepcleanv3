@@ -210,10 +210,10 @@ val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median',
 t0 = 1378403243 
 
 # not using the full 3072s 
-train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
+train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
     start_time=params.train_t0, end_time=params.train_t0+1536, fs=params.fs)  
 
-val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data.npz', channels='channels.ini',
+val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
     start_time=params.train_t0+1536, end_time=params.train_t0+3072, fs=params.fs) 
 
 # test_data.read('compined_data.npz', channels='channels.ini', 
@@ -269,11 +269,11 @@ x, tgt = next(iter(train_loader))
 # print('x: ', x.shape)  # (B, C, L) 
 # print('tgt: ', tgt.shape) # (B, L)
 
-model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=3,
-                                       cnn_kernel=2, cnn_layers=7, n_iters=2)
+# model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
+#                                        d_model=128, nhead=8, num_layers=3,
+#                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
 
-# model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
+model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -313,7 +313,7 @@ run_data = {
     'history': history
 }
 
-run_path = os.path.join(params.train_dir, 'channel-embed-full.json')
+run_path = os.path.join(params.train_dir, 'dcaddchan3.json')
 with open(run_path, 'w') as f: 
     json.dump(run_data, f, indent=2)
 
