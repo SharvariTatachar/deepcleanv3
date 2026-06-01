@@ -1,10 +1,14 @@
 import os
+import sys
 import torch 
+import time
 import pickle
 import argparse
 import json 
 import configparser
 import logging
+import random 
+import numpy as np 
 import torch.nn as nn 
 import torch.optim as optim
 from torch.utils.data import DataLoader 
@@ -18,7 +22,29 @@ import deepclean.model.hybrid as hy
 import deepclean.model.utils as utils
 import deepclean.model.deepclean
 
+def load_channels(path):
+    with open(path) as f:
+        return [
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#")
+        ]
 
+def set_seed(seed: int): 
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+def seed_worker(worker_id): 
+    worker_seed = torch.initial_seed() % 2**32 
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -39,8 +65,8 @@ def parse_cmd():
                         type=int, default=None)
     parser.add_argument('--train-duration', help='Duration of train/val frame',
                         type=int, default=None)
-    parser.add_argument('--chanslist', help='Path to channel list',
-                        type=str, default=None)
+    # parser.add_argument('--chanslist', help='Path to channel list',
+    #                     type=str, default=None)
     parser.add_argument('--fs', help='Sampling frequency',
                         type=float, default=None)
 
@@ -106,7 +132,7 @@ def parse_cmd():
     parser.add_argument('--initial-checkpoint', help='pretrained model to initialize with', 
                         default=None, type=str)
     parser.add_argument('--log', help='Log file', type=str, default=None)
-
+    parser.add_argument('--seed', type=int, default=0)
     # cuda arguments
     parser.add_argument('--device', help='Device to use',
                         type=str, default=None)
@@ -131,8 +157,8 @@ def parse_cmd():
         params.train_duration = c.getint('train_duration')
     if params.fs is None and 'fs' in c:
         params.fs = c.getint('fs')
-    if params.chanslist is None and 'chanslist' in c:
-        params.chanslist = c.get('chanslist')
+    # if params.chanslist is None and 'chanslist' in c:
+    #     params.chanslist = c.get('chanslist')
     if params.train_kernel is None and 'train_kernel' in c:
         params.train_kernel = c.getfloat('train_kernel')
     if params.train_stride is None and 'train_stride' in c:
@@ -175,10 +201,45 @@ def parse_cmd():
 
     return params 
 
+timestamp = int(time.time())
 params = parse_cmd()
+set_seed(params.seed)  
+print(f"Using seed: {params.seed}")
 pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
 params = pickle.load(open('dc_transform_train.p', 'rb'))['params']
 
+
+# CHANNEL VOCABULARY 
+target_channel = "H1:GDS-CALIB_STRAIN"
+baseline_channels = [
+    ch for ch in load_channels("ogchannels.ini")
+    if ch != target_channel
+]
+
+all_channels = [
+    ch for ch in load_channels("channels.ini")
+    if ch != target_channel
+]
+noisy_pool = [] 
+for ch in all_channels: 
+    if ch not in baseline_channels: 
+        noisy_pool.append(ch)
+
+channel_to_id = {
+    ch: i for i, ch in enumerate(all_channels)
+}
+id_to_channel = { 
+    i: ch for ch, i in channel_to_id.items()
+}
+
+channel_name_to_data_index = {
+    ch: i for i, ch in enumerate(all_channels)
+}
+
+print('len all_chans: ', len(all_channels))
+print('len baseline: ', len(baseline_channels))
+print('len noisy: ', len(noisy_pool))
+print('max data index: ', max(channel_name_to_data_index.values()))
 
 os.makedirs(params.train_dir, exist_ok=True)
 if params.log is not None: 
@@ -209,19 +270,15 @@ val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median',
 
 t0 = 1378403243 
 
-# not using the full 3072s 
-train_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
+train_data.read('/storage/home/hcoda1/3/statachar3/r-pli77-0/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
     start_time=params.train_t0, end_time=params.train_t0+1536, fs=params.fs)  
 
-val_data.read('/storage/home/hcoda1/3/statachar3/scratch/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
+val_data.read('/storage/home/hcoda1/3/statachar3/r-pli77-0/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
     start_time=params.train_t0+1536, end_time=params.train_t0+3072, fs=params.fs) 
 
-# test_data.read('compined_data.npz', channels='channels.ini', 
-#     start_time=t0+2560, end_time=t0+3072, fs=2048)
 
 train_data = train_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
 val_data = val_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
-# test_data = test_data.bandpass(110, 130, order=8, channels='target')
 
 
 # filter pad default from deepclean-prod, is 5: 
@@ -244,13 +301,17 @@ aux_patch, tgt_patch = train_data[0]
 
 # print('train windows: ', len(train_data))
 # print('val windows: ', len(val_data))
+g = torch.Generator() 
+g.manual_seed(params.seed)
 
 train_loader = DataLoader(
     train_data,
     batch_size=params.batch_size, 
     shuffle=False, 
+    generator=g,
     num_workers=4,
-    pin_memory=True, 
+    worker_init_fn=seed_worker,
+    pin_memory=False, 
     persistent_workers=True, 
     prefetch_factor=4, 
     drop_last=True
@@ -259,21 +320,51 @@ val_loader = DataLoader(
     val_data, 
     batch_size=params.batch_size, 
     shuffle=False, 
+    generator=g,
     num_workers=4, 
-    pin_memory=True, 
+    worker_init_fn=seed_worker,
+    pin_memory=False, 
     persistent_workers=True, 
     prefetch_factor=4,
     drop_last=True)
     
 x, tgt = next(iter(train_loader))
-# print('x: ', x.shape)  # (B, C, L) 
-# print('tgt: ', tgt.shape) # (B, L)
 
-# model = hy.HybridTransformerCNN(C=x.shape[1], fs=params.fs, window_sec=8.0,
-#                                        d_model=128, nhead=8, num_layers=3,
-#                                        cnn_kernel=2, cnn_layers=7, n_iters=2)
+n_noisy = 10 # TODO: make this a parameter later 
+model_C = len(baseline_channels) + n_noisy
 
-model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
+selected_channels = baseline_channels + random.sample(noisy_pool, n_noisy)
+
+selected_indices = [
+    channel_name_to_data_index[ch]
+    for ch in selected_channels
+]
+
+selected_ids = torch.tensor(
+    [channel_to_id[ch] for ch in selected_channels],
+    dtype=torch.long,
+    device=device
+)
+
+x_sub = x[:, selected_indices, :].to(device)
+channel_ids = selected_ids.unsqueeze(0).expand(x_sub.shape[0], -1)
+
+# print("x_sub shape:", x_sub.shape)
+# print("channel_ids shape:", channel_ids.shape)
+# print("first 5 selected channels:", selected_channels[:5])
+# print("first 5 channel ids:", channel_ids[0, :5])
+# print('len channel_to_id: ', len(channel_to_id), flush=True) 
+# print("max channel id:", max(channel_to_id.values()), flush=True)
+
+# print("Using utils from:", utils.__file__)
+
+model = hy.HybridTransformerCNN(C=model_C, fs=params.fs, window_sec=8.0,
+                                       d_model=128, nhead=8, num_layers=3,
+                                       cnn_kernel=2, cnn_layers=7, n_iters=2,
+                                       num_channel_ids=max(channel_to_id.values())+1,
+                                )
+
+# model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
 model = model.to(device)
 
 # criterion = nn.MSELoss() 
@@ -292,30 +383,74 @@ criterion = dc.criterion.CompositePSDLoss(
 
 optimizer = optim.Adam(model.parameters(), lr=params.lr, weight_decay=params.weight_decay)
 
-lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
+# lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
+lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.5)
 
 train_logger = dc.logger.Logger(outdir=params.train_dir, metrics=['loss'])
 history = utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger)
+    val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
+    dynamic_channels=True, all_channels=all_channels, 
+    baseline_channels=baseline_channels, noisy_pool=noisy_pool, 
+    channel_to_id=channel_to_id)
 
-run_data = {
-    'model_name': model.__class__.__name__,
-    'batch_size': params.batch_size, 
-    'lr': params.lr, 
-    'weight_decay': params.weight_decay, 
-    'max_epochs': params.max_epochs, 
-    'train_t0': params.train_t0, 
-    'train_duration': params.train_duration,
-    'fs': params.fs, 
-    'filt_fl': params.filt_fl,
-    'filt_fh': params.filt_fh,
-    'history': history
-}
+model.eval()
 
-run_path = os.path.join(params.train_dir, 'dcaddchan3.json')
-with open(run_path, 'w') as f: 
-    json.dump(run_data, f, indent=2)
+with torch.no_grad():
+    x_val, tgt_val = next(iter(val_loader))
+    x_val = x_val.to(device)
+
+    selected_idx, selected_names, sampled_noisy = select_chans(
+        all_channels, baseline_channels, noisy_pool
+    )
+
+    selected_idx_tensor = torch.as_tensor(selected_idx, dtype=torch.long, device=device)
+
+    selected_ids = torch.tensor(
+        [channel_to_id[ch] for ch in selected_names],
+        dtype=torch.long,
+        device=device,
+    )
+
+    x_val = x_val[:, selected_idx_tensor, :]
+    channel_ids = selected_ids.unsqueeze(0).expand(x_val.size(0), -1)
+
+    pred = model(x_val, channel_ids)    
+    attn = model.transformer.get_attention()[-1]
+    B = model.last_B
+    C = model.last_C
+    Tds = model.last_Tds
+
+    attn = attn.view(B, Tds, attn.shape[1], C, C)
+
+#     pred1 = model(x_sub, channel_ids)
+#     pred2 = model(x_sub, channel_ids)
+#     perm = torch.randperm(x_sub.shape[1], device=device)
+#     x_perm = x_sub[:, perm, :]
+#     ids_perm = channel_ids[:, perm]
+#     pred3 = model(x_perm, ids_perm)
+#     diff = (pred1 - pred2).abs().mean().item()
+#     diff_perm = (pred1 - pred3).abs().mean().item() 
+# print("Repeat difference - no permutation: ", diff)
+# print('Permutation consistency diff: ', diff_perm)
+    
+# run_data = {
+#     'model_name': model.__class__.__name__,
+#     'batch_size': params.batch_size, 
+#     'lr': params.lr, 
+#     'weight_decay': params.weight_decay, 
+#     'max_epochs': params.max_epochs, 
+#     'train_t0': params.train_t0, 
+#     'train_duration': params.train_duration,
+#     'fs': params.fs, 
+#     'filt_fl': params.filt_fl,
+#     'filt_fh': params.filt_fh,
+#     'history': history
+# }
+
+# run_path = os.path.join(params.train_dir, f'permutation')
+# with open(run_path, 'w') as f: 
+#     json.dump(run_data, f, indent=2)
 
 
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,8 +10,38 @@ import torch
 
 from ..logger import Logger
 
+# TODO: add more choices for noisy channels 
+
+def select_chans(all_chans, baseline_chans, noisy_pool, noisy_choices=[5]): 
+    "Keep baseline channels for each epoch, randomly select noisy channels"
+    n_noisy = np.random.choice(noisy_choices)
+    
+    # sample noisy channels using n_noisy
+    sampled_noisy = list(
+        np.random.choice(
+            noisy_pool,
+            size=min(n_noisy, len(noisy_pool)),
+            replace=False
+        )
+    )
+
+    selected_names = baseline_chans + sampled_noisy
+
+    # mapping channel names to indices 
+    channel_to_idx = {
+        ch: i for i, ch in enumerate(all_chans)
+    }
+
+    selected_idx = [
+        channel_to_idx[ch]
+        for ch in selected_names
+    ]
+
+    return selected_idx, selected_names, sampled_noisy 
+
 def train(train_loader, model, criterion, device, optimizer, lr_scheduler, 
-        val_loader=None, max_epochs=10, logger=None): 
+        val_loader=None, max_epochs=10, logger=None, dynamic_channels=False,
+        all_channels=None, baseline_channels=None, noisy_pool=None, channel_to_id=None): 
         
         # If Logger is not given, create a default logger
         if logger is None:
@@ -30,15 +61,56 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
         for epoch in range(max_epochs): 
             # Training phase
             model.train()
+            if dynamic_channels: 
+                selected_idx, selected_names, sampled_noisy = select_chans(all_channels, 
+                baseline_channels, 
+                noisy_pool)
+                
+                selected_idx_tensor = torch.as_tensor(selected_idx, dtype=torch.long, device=device)
+                
+                selected_ids = torch.tensor(
+                    [channel_to_id[ch] for ch in selected_names], 
+                    dtype=torch.long, 
+                    device=device
+                )
+
+                # print(f"Epoch{epoch+1}", flush=True)
+                # print("selected min:", selected_idx_tensor.min().item(), flush=True)
+                # print("selected max:", selected_idx_tensor.max().item(), flush=True)
+                # print("len selected:", len(selected_idx_tensor), flush=True)                
+            
+            else: 
+                selected_names = baseline_channels 
+                selected_ids = torch.tensor(
+                    [channel_to_id[ch] for ch in selected_names],
+                    dtype=torch.long,
+                    device=device,
+                )
+
             train_loss_sum = torch.zeros((), device=device)
             n_seen = 0 
+            
             for step, (x, tgt) in enumerate(train_loader):
                 x = x.to(device, non_blocking=True)  # (B, C, L)
-                tgt = tgt.to(device, non_blocking=True)  # (B, L)
+                tgt = tgt.to(device, non_blocking=True)
+                
+                if dynamic_channels:
+                    if step == 0: 
+                        #print("x C:", x.shape[1], flush=True)
+                        assert selected_idx_tensor.max().item() < x.shape[1], (
+                            f'Bad channel index: max idx {selected_idx_tensor.max().item()}'
+                            f'but x has only {x.shape[1]} channels'
+                        )
+                        #sys.exit(0)
+                    x = x[:, selected_idx_tensor, :]
+
+                channel_ids = selected_ids.unsqueeze(0).expand(x.size(0), -1)
 
                 optimizer.zero_grad(set_to_none=True) 
+
                 with torch.amp.autocast('cuda', enabled=(device.type=="cuda")):
-                    pred = model(x).squeeze(1) # (B, L)
+                    pred = model(x)
+                    #pred = model(x, channel_ids).squeeze(1) # (B, L)
                     loss = criterion(pred, tgt)
                 
                 scaler.scale(loss).backward()
@@ -52,10 +124,6 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
                 else:
                     train_loss_sum += loss.detach()
                     n_seen +=1 
-                    
-                # if step % 10 == 0: 
-                #     logging.info(f"epoch {epoch} step {step} loss {loss.item():.6f}")
-
 
             # Compute average training loss
             train_loss = (train_loss_sum/n_seen).item()
@@ -66,19 +134,27 @@ def train(train_loader, model, criterion, device, optimizer, lr_scheduler,
                 model.eval()
                 val_loss_sum = torch.zeros((), device=device)
                 n_val = 0
+
                 with torch.no_grad():
                     for x_val, tgt_val in val_loader:
                         x_val = x_val.to(device, non_blocking=True)
                         tgt_val = tgt_val.to(device, non_blocking=True)
+
+                        if dynamic_channels:
+                            x_val = x_val[:, selected_idx_tensor, :]
+                       
                         with torch.amp.autocast('cuda', enabled=(device.type=="cuda")):
-                            pred_val = model(x_val).squeeze(1)
+                            pred_val = model(x_val)
+                            #pred_val = model(x_val, channel_ids).squeeze(1)
                             loss_val = criterion(pred_val, tgt_val)
+
                         if hasattr(criterion, 'reduction') and criterion.reduction == 'mean':
                             val_loss_sum += loss_val.detach() * x_val.size(0)
                             n_val += x_val.size(0)
                         else:
                             val_loss_sum += loss_val.detach()
                             n_val += 1
+
                 val_loss = (val_loss_sum/n_val).item()
                 model.train()
             

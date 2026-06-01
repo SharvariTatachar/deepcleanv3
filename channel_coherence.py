@@ -3,8 +3,9 @@
 import numpy as np 
 from scipy.signal import coherence 
 
-channels = "channels.ini"
-data_path = "/storage/home/hcoda1/3/statachar3/deepcleanv3/data/combined_data_updated.npz"
+channels = "irrchans.ini"
+data_path = "data/combined_data_updated.npz"
+
 fs = 2048                     # sampling rate
 fmin, fmax = 118, 124         # frequency band of interest
 nperseg = 1024                # Welch segment length
@@ -22,11 +23,12 @@ def load_channels(ini_path):
     return channels
 
 chan_lst = load_channels(channels)
+print('done loading channels')
 target_channel = chan_lst[0]
 witness_channels = [ch for ch in chan_lst if ch != target_channel]
 
 data = np.load(data_path)
-
+print('done loading data')
 if target_channel not in data.files:
     raise KeyError(f"Target channel {target_channel} not found in {data_path}")
 
@@ -44,7 +46,7 @@ for ch in witness_channels:
     if len(witness) != len(strain):
         print(f"Skipping {ch}: length mismatch ({len(witness)} vs {len(strain)})")
         continue
-
+    print('wit: ', ch)
     freqs, coh = coherence(
         strain,
         witness,
