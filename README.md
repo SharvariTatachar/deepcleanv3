@@ -14,4 +14,4 @@ DeepClean is a machine learning framework for subtracting instrumental and envir
 The main training entry point is:
 
 ```bash
-python dc-transform-train.py
+python3 dc-transform-train.py

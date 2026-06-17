@@ -14,13 +14,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader 
 
 
-import deepclean as dc 
-import deepclean.timeseries as ts 
-import deepclean.criterion
-import deepclean.model as model 
-import deepclean.model.hybrid as hy
-import deepclean.model.utils as utils
-import deepclean.model.deepclean
+import deepcleanhybrid as dc 
+import deepcleanhybrid.timeseries as ts 
+import deepcleanhybrid.criterion
+import deepcleanhybrid.model as model 
+import deepcleanhybrid.model.hybrid as hy
+import deepcleanhybrid.model.utils as utils
+
 
 def load_channels(path):
     with open(path) as f:
@@ -65,10 +65,11 @@ def parse_cmd():
                         type=int, default=None)
     parser.add_argument('--train-duration', help='Duration of train/val frame',
                         type=int, default=None)
-    # parser.add_argument('--chanslist', help='Path to channel list',
-    #                     type=str, default=None)
+    parser.add_argument('--chanslist', help='Path to channel list',
+                        type=str, default=None)
     parser.add_argument('--fs', help='Sampling frequency',
                         type=float, default=None)
+    parser.add_argument("--dataset-file", type=str, default=None)
 
 
     # preprocess arguments
@@ -157,8 +158,10 @@ def parse_cmd():
         params.train_duration = c.getint('train_duration')
     if params.fs is None and 'fs' in c:
         params.fs = c.getint('fs')
-    # if params.chanslist is None and 'chanslist' in c:
-    #     params.chanslist = c.get('chanslist')
+    if params.dataset_file is None and "dataset_file" in c: 
+        params.dataset_file = c.get("dataset_file")
+    if params.chanslist is None and 'chanslist' in c:
+        params.chanslist = c.get('chanslist')
     if params.train_kernel is None and 'train_kernel' in c:
         params.train_kernel = c.getfloat('train_kernel')
     if params.train_stride is None and 'train_stride' in c:
@@ -205,21 +208,28 @@ timestamp = int(time.time())
 params = parse_cmd()
 set_seed(params.seed)  
 print(f"Using seed: {params.seed}")
-pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
-params = pickle.load(open('dc_transform_train.p', 'rb'))['params']
+# pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
+# params = pickle.load(open('dc_transform_train.p', 'rb'))['params']
 
 
 # CHANNEL VOCABULARY 
 target_channel = "H1:GDS-CALIB_STRAIN"
-baseline_channels = [
-    ch for ch in load_channels("ogchannels.ini")
-    if ch != target_channel
-]
 
+channels_file = params.chanslist 
 all_channels = [
-    ch for ch in load_channels("channels.ini")
+    ch for ch in load_channels(channels_file)
     if ch != target_channel
 ]
+baseline_channels = all_channels
+# baseline_channels = [
+#     ch for ch in load_channels("ogchannels.ini")
+#     if ch != target_channel
+# ]
+
+# all_channels = [
+#     ch for ch in load_channels("/runs_coherence_sweep/very_low_added_15seed0/channels_selected.ini")
+#     if ch != target_channel
+# ]
 noisy_pool = [] 
 for ch in all_channels: 
     if ch not in baseline_channels: 
@@ -228,18 +238,22 @@ for ch in all_channels:
 channel_to_id = {
     ch: i for i, ch in enumerate(all_channels)
 }
-id_to_channel = { 
-    i: ch for ch, i in channel_to_id.items()
-}
+fixed_channel_ids = torch.arange(
+    len(all_channels), 
+    dtype=torch.long,
+)
+# id_to_channel = { 
+#     i: ch for ch, i in channel_to_id.items()
+# }
 
-channel_name_to_data_index = {
-    ch: i for i, ch in enumerate(all_channels)
-}
+# channel_name_to_data_index = {
+#     ch: i for i, ch in enumerate(all_channels)
+# }
 
-print('len all_chans: ', len(all_channels))
-print('len baseline: ', len(baseline_channels))
-print('len noisy: ', len(noisy_pool))
-print('max data index: ', max(channel_name_to_data_index.values()))
+# print('len all_chans: ', len(all_channels))
+# print('len baseline: ', len(baseline_channels))
+# print('len noisy: ', len(noisy_pool))
+# print('max data index: ', max(channel_name_to_data_index.values()))
 
 os.makedirs(params.train_dir, exist_ok=True)
 if params.log is not None: 
@@ -270,11 +284,21 @@ val_data = ts.TimeSeriesSegmentDataset(kernel=8, stride=0.25, pad_mode='median',
 
 t0 = 1378403243 
 
-train_data.read('/storage/home/hcoda1/3/statachar3/r-pli77-0/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
-    start_time=params.train_t0, end_time=params.train_t0+1536, fs=params.fs)  
+train_data.read(
+    params.dataset_file, 
+    channels=channels_file, 
+    start_time=params.train_t0,
+    end_time=params.train_t0 +1536, 
+    fs=params.fs,
+)  
 
-val_data.read('/storage/home/hcoda1/3/statachar3/r-pli77-0/deepcleanv3/data/combined_data_updated.npz', channels='channels.ini',
-    start_time=params.train_t0+1536, end_time=params.train_t0+3072, fs=params.fs) 
+val_data.read(
+    params.dataset_file,
+    channels=channels_file,
+    start_time=params.train_t0 +1536,
+    end_time=params.train_t0 +3072,
+    fs=params.fs,
+) 
 
 
 train_data = train_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
@@ -329,25 +353,31 @@ val_loader = DataLoader(
     drop_last=True)
     
 x, tgt = next(iter(train_loader))
+print('x shape: ', x.shape)
+print("tgt shape:", tgt.shape)
+print("train_data.n_channels:", train_data.n_channels)
+print("len(all_channels):", len(all_channels))
 
-n_noisy = 10 # TODO: make this a parameter later 
+
+n_noisy = 0 # TODO: make this a parameter later 
 model_C = len(baseline_channels) + n_noisy
+print("model_C:", model_C)
 
-selected_channels = baseline_channels + random.sample(noisy_pool, n_noisy)
+# selected_channels = baseline_channels
 
-selected_indices = [
-    channel_name_to_data_index[ch]
-    for ch in selected_channels
-]
+# selected_indices = [
+#     channel_name_to_data_index[ch]
+#     for ch in selected_channels
+# ]
 
-selected_ids = torch.tensor(
-    [channel_to_id[ch] for ch in selected_channels],
-    dtype=torch.long,
-    device=device
-)
+# selected_ids = torch.tensor(
+#     [channel_to_id[ch] for ch in selected_channels],
+#     dtype=torch.long,
+#     device=device
+# )
 
-x_sub = x[:, selected_indices, :].to(device)
-channel_ids = selected_ids.unsqueeze(0).expand(x_sub.shape[0], -1)
+# x_sub = x[:, selected_indices, :].to(device)
+# channel_ids = selected_ids.unsqueeze(0).expand(x_sub.shape[0], -1)
 
 # print("x_sub shape:", x_sub.shape)
 # print("channel_ids shape:", channel_ids.shape)
@@ -358,6 +388,7 @@ channel_ids = selected_ids.unsqueeze(0).expand(x_sub.shape[0], -1)
 
 # print("Using utils from:", utils.__file__)
 
+# testing num layers 
 model = hy.HybridTransformerCNN(C=model_C, fs=params.fs, window_sec=8.0,
                                        d_model=128, nhead=8, num_layers=3,
                                        cnn_kernel=2, cnn_layers=7, n_iters=2,
@@ -387,74 +418,71 @@ optimizer = optim.Adam(model.parameters(), lr=params.lr, weight_decay=params.wei
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.5)
 
 train_logger = dc.logger.Logger(outdir=params.train_dir, metrics=['loss'])
+# history = utils.train(
+#     train_loader, model, criterion, device, optimizer, lr_scheduler, 
+#     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
+#     dynamic_channels=False, all_channels=all_channels, 
+#     baseline_channels=baseline_channels, noisy_pool=noisy_pool, 
+#     channel_to_id=channel_to_id)
 history = utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
-    dynamic_channels=True, all_channels=all_channels, 
-    baseline_channels=baseline_channels, noisy_pool=noisy_pool, 
-    channel_to_id=channel_to_id)
+    dynamic_channels=False, fixed_channel_ids=fixed_channel_ids)
 
-model.eval()
+run_data = {
+    "run_name": os.path.basename(params.train_dir),
+    "model_name": model.__class__.__name__,
+    "seed": params.seed,
+    "dataset_file": params.dataset_file,
+    "channels_file": channels_file,
+    "n_witness_channels": len(all_channels),
+    "history": history,
+}
 
-with torch.no_grad():
-    x_val, tgt_val = next(iter(val_loader))
-    x_val = x_val.to(device)
+run_path = os.path.join(params.train_dir, "dc_transform_run.json")
+with open(run_path, "w") as f:
+    json.dump(run_data, f, indent=2)
 
-    selected_idx, selected_names, sampled_noisy = select_chans(
-        all_channels, baseline_channels, noisy_pool
-    )
-
-    selected_idx_tensor = torch.as_tensor(selected_idx, dtype=torch.long, device=device)
-
-    selected_ids = torch.tensor(
-        [channel_to_id[ch] for ch in selected_names],
-        dtype=torch.long,
-        device=device,
-    )
-
-    x_val = x_val[:, selected_idx_tensor, :]
-    channel_ids = selected_ids.unsqueeze(0).expand(x_val.size(0), -1)
-
-    pred = model(x_val, channel_ids)    
-    attn = model.transformer.get_attention()[-1]
-    B = model.last_B
-    C = model.last_C
-    Tds = model.last_Tds
-
-    attn = attn.view(B, Tds, attn.shape[1], C, C)
-
-#     pred1 = model(x_sub, channel_ids)
-#     pred2 = model(x_sub, channel_ids)
-#     perm = torch.randperm(x_sub.shape[1], device=device)
-#     x_perm = x_sub[:, perm, :]
-#     ids_perm = channel_ids[:, perm]
-#     pred3 = model(x_perm, ids_perm)
-#     diff = (pred1 - pred2).abs().mean().item()
-#     diff_perm = (pred1 - pred3).abs().mean().item() 
-# print("Repeat difference - no permutation: ", diff)
-# print('Permutation consistency diff: ', diff_perm)
-    
-# run_data = {
-#     'model_name': model.__class__.__name__,
-#     'batch_size': params.batch_size, 
-#     'lr': params.lr, 
-#     'weight_decay': params.weight_decay, 
-#     'max_epochs': params.max_epochs, 
-#     'train_t0': params.train_t0, 
-#     'train_duration': params.train_duration,
-#     'fs': params.fs, 
-#     'filt_fl': params.filt_fl,
-#     'filt_fh': params.filt_fh,
-#     'history': history
-# }
-
-# run_path = os.path.join(params.train_dir, f'permutation')
-# with open(run_path, 'w') as f: 
-#     json.dump(run_data, f, indent=2)
+logging.info(f"Saved run data to {run_path}")
 
 
+# eval_channels = baseline_channels + (random.sample(noisy_pool, 10))
+# model.eval()
+
+# test_loss = 0.0
 
 # with torch.no_grad():
-    # pred = model(x)
-    # print('pred shape: ', pred.shape)
+
+#     for x, y in test_loader:
+
+#         x = x.to(device)
+#         y = y.to(device)
+
+#         # keep baseline + new noisy channels
+#         x_eval = x[:, selected_idx, :]
+
+#         channel_ids = (
+#             torch.tensor(
+#                 selected_ids,
+#                 dtype=torch.long,
+#                 device=device,
+#             )
+#             .unsqueeze(0)
+#             .repeat(x_eval.shape[0], 1)
+#         )
+
+#         pred = model(
+#             x_eval,
+#             channel_ids=channel_ids,
+#         )
+
+#         loss = criterion(pred, y)
+
+#         test_loss += loss.item()
+
+# test_loss /= len(test_loader)
+
+# print(f"Eval loss = {test_loss:.6f}")
+
+
    

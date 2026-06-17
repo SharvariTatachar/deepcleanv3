@@ -19,6 +19,7 @@ ENV/
 *.gwf
 *.npy
 *.out
+channel_sets/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -49,3 +50,8 @@ out_dir/
 train_dir/
 metrics/
 data/
+runs*/
+
+# Bash shell scripts 
+*.sbatch
+*.sh
