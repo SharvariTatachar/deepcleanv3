@@ -1,0 +1,63 @@
+Mean coherence with H1:GDS-CALIB_STRAIN in 118-124 Hz:
+
+H1:PEM-CS_ACC_PSL_PERISCOPE_X_DQ                              0.485517
+H1:IMC-WFS_B_Q_YAW_OUT_DQ                                     0.483876
+H1:IMC-WFS_A_DC_YAW_OUT_DQ                                    0.483629
+H1:IMC-WFS_B_I_YAW_OUT_DQ                                     0.482254
+H1:IMC-DOF_1_Y_IN1_DQ                                         0.482238
+H1:PEM-CS_ACC_PSL_TABLE1_X_DQ                                 0.481926
+H1:IMC-DOF_4_Y_IN1_DQ                                         0.481247
+H1:IMC-WFS_B_DC_YAW_OUT_DQ                                    0.481247
+H1:LSC-MCL_OUT_DQ                                             0.476664
+H1:LSC-REFL_SERVO_CTRL_OUT_DQ                                 0.476614
+H1:LSC-MCL_IN1_DQ                                             0.476522
+H1:LSC-REFL_SERVO_ERR_OUT_DQ                                  0.475922
+H1:IMC-DOF_2_Y_IN1_DQ                                         0.475534
+H1:IMC-WFS_B_Q_PIT_OUT_DQ                                     0.472352
+H1:IMC-WFS_A_Q_YAW_OUT_DQ                                     0.471517
+H1:IMC-DOF_2_P_IN1_DQ                                         0.470040
+H1:PEM-CS_ACC_PSL_TABLE1_Z_DQ                                 0.469468
+H1:IMC-WFS_B_I_PIT_OUT_DQ                                     0.469115
+H1:IMC-L_OUT_DQ                                               0.467790
+H1:IMC-F_OUT_DQ                                               0.467728
+H1:IMC-WFS_A_Q_PIT_OUT_DQ                                     0.463964
+H1:IMC-WFS_A_DC_PIT_OUT_DQ                                    0.449175
+H1:PSL-PMC_MIXER_OUT_DQ                                       0.439754
+H1:PSL-PMC_HV_MON_OUT_DQ                                      0.438640
+H1:PEM-CS_ACC_PSL_PERISCOPE_Y_DQ                              0.416386
+H1:HPI-HAM4_BLND_L4C_Y_IN1_DQ                                 0.238442
+H1:HPI-HAM1_BLND_L4C_RX_IN1_DQ                                0.213267
+H1:PEM-CS_ACC_HAM2_PRM_Z_DQ                                   0.193235
+H1:PEM-CS_ACC_LVEAFLOOR_BS_Z_DQ                               0.174681
+H1:PEM-CS_ACC_HAM2_PRM_Y_DQ                                   0.172438
+H1:HPI-HAM2_BLND_L4C_RY_IN1_DQ                                0.153756
+H1:PEM-CS_ACC_LVEAFLOOR_HAM1_X_DQ                             0.145289
+H1:HPI-HAM1_BLND_L4C_VP_IN1_DQ                                0.075432
+H1:HPI-HAM6_BLND_L4C_VP_IN1_DQ                                0.049400
+H1:HPI-HAM6_BLND_L4C_RX_IN1_DQ                                0.045388
+
+
+
+H1:ISI-GND_BRS_ETMY_RX_OUT_DQ                                 0.000104 (add 20)
+H1:ISI-ETMY_ST2_BLND_Z_GS13_CUR_IN1_DQ                        0.016809
+H1:ISI-GND_STS_ETMX_X_DQ                                      0.014276
+H1:ISI-GND_BRS_ETMX_RY_OUT_DQ                                 0.000056
+H1:ASC-AS_A_RF72_Q_SUM_OUT_DQ                                 0.001644
+H1:ASC-AS_A_RF72_I_SUM_OUT_DQ                                 0.000612
+H1:ASC-AS_A_RF36_Q_YAW_OUT_DQ                                 0.000571
+H1:ASC-AS_A_RF36_Q_PIT_OUT_DQ                                 0.000309
+H1:ASC-AS_A_RF72_I_PIT_OUT_DQ                                 0.000164
+H1:ASC-AS_A_RF72_I_YAW_OUT_DQ                                 0.000117 (add 20)
+H1:ASC-AS_A_RF72_Q_PIT_OUT_DQ                                 0.000048 (add 10)
+H1:ASC-AS_A_RF72_Q_YAW_OUT_DQ                                 0.000045
+H1:HPI-ETMX_BLND_L4C_RY_IN1_DQ                                0.015240
+H1:HPI-ETMX_BLND_L4C_RZ_IN1_DQ                                0.015141
+H1:HPI-ETMX_BLND_L4C_HP_IN1_DQ                                0.014856 (add 10)
+H1:HPI-ETMX_BLND_L4C_RX_IN1_DQ                                0.014767 (add 5)
+H1:HPI-ETMY_BLND_L4C_HP_IN1_DQ                                0.012887 
+H1:ASC-AS_A_DC_NSUM_OUT_DQ                                    0.006296
+H1:ASC-AS_A_DC_YAW_OUT_DQ                                     0.000283
+H1:ASC-AS_A_RF36_I_PIT_OUT_DQ                                 0.000039 (add 5)
+
+
+

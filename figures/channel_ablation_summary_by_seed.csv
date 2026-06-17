@@ -1,0 +1,13 @@
+condition,seed,loss_key,best_loss,best_epoch,final_loss,n_epochs,json_path
+ogchannels,0,val_loss,0.7282329201698303,13,0.7288559675216675,20,runs_channel_ablation_deepclean/ogchannels_seed0/dc_run.json
+ogchannels,1,val_loss,0.7285724878311157,16,0.7286784052848816,20,runs_channel_ablation_deepclean/ogchannels_seed1/dc_run.json
+ogchannels,2,val_loss,0.7281181216239929,16,0.7282832264900208,20,runs_channel_ablation_deepclean/ogchannels_seed2/dc_run.json
+top35,0,val_loss,0.7296380400657654,13,0.7301458120346069,20,runs_channel_ablation_deepclean/top35_seed0/dc_run.json
+top35,1,val_loss,0.7291029095649719,20,0.7291029095649719,20,runs_channel_ablation_deepclean/top35_seed1/dc_run.json
+top35,2,val_loss,0.729523241519928,20,0.729523241519928,20,runs_channel_ablation_deepclean/top35_seed2/dc_run.json
+channelsadd5,0,val_loss,0.7281779646873474,13,0.7286311984062195,20,runs_channel_ablation_deepclean/channelsadd5_seed0/dc_run.json
+channelsadd5,1,val_loss,0.7277595400810242,17,0.7278299331665039,20,runs_channel_ablation_deepclean/channelsadd5_seed1/dc_run.json
+channelsadd5,2,val_loss,0.7284485697746277,12,0.7289212346076965,20,runs_channel_ablation_deepclean/channelsadd5_seed2/dc_run.json
+channelsminus5,0,val_loss,0.730102002620697,12,0.7303542494773865,20,runs_channel_ablation_deepclean/channelsminus5_seed0/dc_run.json
+channelsminus5,1,val_loss,0.7290000319480896,20,0.7290000319480896,20,runs_channel_ablation_deepclean/channelsminus5_seed1/dc_run.json
+channelsminus5,2,val_loss,0.7296460270881653,14,0.7298787236213684,20,runs_channel_ablation_deepclean/channelsminus5_seed2/dc_run.json
