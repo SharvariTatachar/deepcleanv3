@@ -98,6 +98,10 @@ def parse_cmd():
     parser.add_argument('--num-workers', help='Number of workers of DataLoader',
                         type=int, default=None)
     parser.add_argument('--lr', help='Learning rate of ADAM optimizer',
+                       type=float, default=None)
+    parser.add_argument('--cnn-lr', help='Learning rate for CNN', 
+                        type=float, default=None)
+    parser.add_argument('--transformer-lr', help='Learning rate for transformer',
                         type=float, default=None)
     parser.add_argument('--weight-decay', help='Weight decay of ADAM optimizer',
                         type=float, default=None)
@@ -181,8 +185,19 @@ def parse_cmd():
         params.max_epochs = c.getint('max_epochs')
     if params.num_workers is None and 'num_workers' in c:
         params.num_workers = c.getint('num_workers')
-    if params.lr is None and 'lr' in c:
-        params.lr = c.getfloat('lr')
+    if params.lr is None:
+        if "lr" in c:
+            params.lr = c.getfloat("lr")
+        else:
+            params.lr = 1e-3
+    if params.cnn_lr is None:
+        if "cnn_lr" in c:
+            params.cnn_lr = c.getfloat("cnn_lr")
+        else:
+            params.cnn_lr = params.lr
+    if params.transformer_lr is None:
+        if "transformer_lr" in c:
+            params.transformer_lr = c.getfloat("transformer_lr")
     if params.weight_decay is None and 'weight_decay' in c:
         params.weight_decay = c.getfloat('weight_decay')
     if params.fftlength is None and 'fftlength' in c:
@@ -201,7 +216,11 @@ def parse_cmd():
         params.train_dir = '.'
     if params.fs is None:
         params.fs = 2048
+    if params.cnn_lr is None:
+        params.cnn_lr = params.lr
 
+    if params.transformer_lr is None:
+        params.transformer_lr = params.lr
     return params 
 
 timestamp = int(time.time())
@@ -210,6 +229,37 @@ set_seed(params.seed)
 print(f"Using seed: {params.seed}")
 # pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
 # params = pickle.load(open('dc_transform_train.p', 'rb'))['params']
+<<<<<<< HEAD
+
+
+# CHANNEL VOCABULARY 
+target_channel = "H1:GDS-CALIB_STRAIN"
+
+channels_file = params.chanslist 
+all_channels = [
+    ch for ch in load_channels(channels_file)
+    if ch != target_channel
+]
+baseline_channels = all_channels
+# baseline_channels = [
+#     ch for ch in load_channels("channelconfigs/ogchannels.ini")
+#     if ch != target_channel
+# ]
+
+noisy_pool = [] 
+for ch in all_channels: 
+    if ch not in baseline_channels: 
+        noisy_pool.append(ch)
+
+channel_to_id = {
+    ch: i for i, ch in enumerate(all_channels)
+}
+fixed_channel_ids = torch.arange(
+    len(all_channels), 
+    dtype=torch.long,
+)
+=======
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 
 # CHANNEL VOCABULARY 
@@ -303,7 +353,10 @@ val_data.read(
 
 train_data = train_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
 val_data = val_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
+<<<<<<< HEAD
+=======
 
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 # filter pad default from deepclean-prod, is 5: 
 
@@ -353,6 +406,30 @@ val_loader = DataLoader(
     drop_last=True)
     
 x, tgt = next(iter(train_loader))
+<<<<<<< HEAD
+# print("params.train_kernel:", params.train_kernel)
+# print("params.fs:", params.fs)
+# print("expected samples:", int(params.train_kernel * params.fs))
+# print("x shape:", x.shape)
+# print("tgt shape:", tgt.shape)
+n_noisy = 0
+model_C = len(baseline_channels) + n_noisy
+# print("model_C:", model_C)
+
+model = hy.HybridTransformerCNN(
+    C=model_C,
+    fs=params.fs,
+    window_sec=params.train_kernel,
+    d_model=128,
+    nhead=8,
+    num_layers=3,
+    cnn_kernel=2,
+    cnn_layers=7,
+    n_iters=2,
+    num_channel_ids=max(channel_to_id.values()) + 1,
+)
+
+=======
 print('x shape: ', x.shape)
 print("tgt shape:", tgt.shape)
 print("train_data.n_channels:", train_data.n_channels)
@@ -396,9 +473,9 @@ model = hy.HybridTransformerCNN(C=model_C, fs=params.fs, window_sec=8.0,
                                 )
 
 # model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 model = model.to(device)
 
-# criterion = nn.MSELoss() 
 criterion = dc.criterion.CompositePSDLoss(
     fs=params.fs,
     fl=params.filt_fl,
@@ -407,13 +484,81 @@ criterion = dc.criterion.CompositePSDLoss(
     overlap=params.overlap,
     psd_weight=params.psd_weight,
     mse_weight=params.mse_weight,
-    reduction='mean',
+    reduction="mean",
     device=device,
-    average='mean'
+    average="mean",
 )
 
-optimizer = optim.Adam(model.parameters(), lr=params.lr, weight_decay=params.weight_decay)
+x = x.to(device)
+tgt = tgt.to(device)
 
+<<<<<<< HEAD
+channel_ids = (
+    fixed_channel_ids.to(device)
+    .unsqueeze(0)
+    .expand(x.shape[0], -1)
+)
+
+transformer_params = []
+base_params = []
+
+for name, parameter in model.named_parameters():
+    if not parameter.requires_grad:
+        continue
+
+    if name.startswith("transformer."):
+        transformer_params.append(parameter)
+    else:
+        base_params.append(parameter)
+
+logging.info(
+    "Optimizer parameter groups: "
+    "base=%d tensors, transformer=%d tensors",
+    len(base_params),
+    len(transformer_params),
+)
+
+logging.info(
+    "Learning rates: base=%.3e, transformer=%.3e",
+    params.cnn_lr,
+    params.transformer_lr,
+)
+
+optimizer = optim.Adam(
+    [
+        {
+            "params": base_params,
+            "lr": params.cnn_lr,
+        },
+        {
+            "params": transformer_params,
+            "lr": params.transformer_lr,
+        },
+    ],
+    weight_decay=params.weight_decay,
+)
+
+lr_scheduler = optim.lr_scheduler.MultiStepLR(
+    optimizer,
+    milestones=[10, 20],
+    gamma=0.2,
+)
+
+# optimizer = optim.Adam(model.parameters(), lr=params.lr, weight_decay=params.weight_decay)
+# lr_scheduler = optim.lr_scheduler.MultiStepLR(
+#     optimizer, 
+#     milestones=[10, 20],
+#     gamma=0.2,
+# )   
+
+train_logger = dc.logger.Logger(outdir=params.train_dir, metrics=['loss'])
+
+history = utils.train(
+    train_loader, model, criterion, device, optimizer, lr_scheduler, 
+    val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
+    dynamic_channels=False, all_channels=all_channels, baseline_channels=baseline_channels,
+    noisy_pool=noisy_pool, channel_to_id=channel_to_id, fixed_channel_ids=fixed_channel_ids)
+=======
 # lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
 lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.5)
 
@@ -428,6 +573,7 @@ history = utils.train(
     train_loader, model, criterion, device, optimizer, lr_scheduler, 
     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
     dynamic_channels=False, fixed_channel_ids=fixed_channel_ids)
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 run_data = {
     "run_name": os.path.basename(params.train_dir),
@@ -439,6 +585,13 @@ run_data = {
     "history": history,
 }
 
+<<<<<<< HEAD
+run_path = os.path.join(params.train_dir, "dc_pcc_run.json")
+with open(run_path, "w") as f:
+    json.dump(run_data, f, indent=2)
+
+logging.info(f"Saved run data to {run_path}")
+=======
 run_path = os.path.join(params.train_dir, "dc_transform_run.json")
 with open(run_path, "w") as f:
     json.dump(run_data, f, indent=2)
@@ -486,3 +639,4 @@ logging.info(f"Saved run data to {run_path}")
 
 
    
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d

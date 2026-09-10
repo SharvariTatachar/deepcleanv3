@@ -277,7 +277,19 @@ class TimeSeriesDataset:
             std = self.std
 
         new = self.copy()
+<<<<<<< HEAD
+        
+        bad_std = (~np.isfinite(std)) | (std == 0)
+        if np.any(bad_std):
+            bad_idx = np.where(bad_std.squeeze())[0]
+            for idx in bad_idx:
+                print(f"BAD STD: idx={idx}, channel={self.channels[idx]}, std={std[idx]}")
+            raise ValueError("Bad std detected")
+        
+        new.data = (new.data.astype(np.float64) - mean) / std
+=======
         new.data = (new.data - mean) / std
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
         return new
                 
     def copy(self):
@@ -297,16 +309,28 @@ class TimeSeriesDataset:
     def get_target(self):
         """ Get target channel """
         return self.data[self.target_idx]
+<<<<<<< HEAD
+           
+    @property
+    def mean(self):
+        """ Return mean of each channel """
+        return self.data.astype(np.float64).mean(axis=-1, keepdims=True)
+=======
         
     @property
     def mean(self):
         """ Return mean of each channel """
         return self.data.mean(axis=-1, keepdims=True)
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
         
     @property
     def std(self):
         """ Return std of each channel """
+<<<<<<< HEAD
+        return self.data.astype(np.float64).std(axis=-1, keepdims=True)
+=======
         return self.data.std(axis=-1, keepdims=True)
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
     @property
     def n_channels(self):

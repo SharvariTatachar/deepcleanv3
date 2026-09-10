@@ -1,5 +1,20 @@
 import torch.nn as nn
 
+class ResBlock1D(nn.Module): 
+    def __init__(self, channels, kernel_size=7):
+        super().__init__()
+        pad = kernel_size // 2
+        self.net = nn.Sequential(
+            nn.Conv1d(channels, channels, kernel_size=kernel_size, stride=1, padding=pad),
+            nn.BatchNorm1d(channels),
+            nn.Tanh(),
+            nn.Conv1d(channels, channels, kernel_size=kernel_size, stride=1, padding=pad),
+            nn.BatchNorm1d(channels),
+        )
+        self.act = nn.Tanh()
+
+    def forward(self, x):
+        return self.act(x + self.net(x))
 class DeepClean(nn.Module):
     
     def __init__(self, in_channels):
@@ -24,6 +39,12 @@ class DeepClean(nn.Module):
         self.downsampler.add_module('CONV_4', nn.Conv1d(32, 64, kernel_size=7, stride=2, padding=3))
         self.downsampler.add_module('BN_4', nn.BatchNorm1d(64))
         self.downsampler.add_module('TANH_4', nn.Tanh())
+
+        self.bottleneck = nn.Sequential(
+            ResBlock1D(64),
+            ResBlock1D(64),
+            ResBlock1D(64),
+        )
                                       
         self.upsampler = nn.Sequential()
         self.upsampler.add_module(
@@ -48,7 +69,10 @@ class DeepClean(nn.Module):
     def forward(self, x):
         x = self.input_conv(x)
         x = self.downsampler(x)
+        x = self.bottleneck(x)
         x = self.upsampler(x)
         x = self.output_conv(x)
         x = x.view(x.shape[0], -1)
         return x
+
+

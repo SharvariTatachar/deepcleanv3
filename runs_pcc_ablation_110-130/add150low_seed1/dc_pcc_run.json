@@ -1,0 +1,31 @@
+{
+  "run_name": "add150low_seed1",
+  "model_name": "HybridTransformerCNN",
+  "seed": 1,
+  "dataset_file": "data/channel_ablation_npzs/110-130/granular/add150low.npz",
+  "channels_file": "channelconfigs/110-130/granular/add150low.ini",
+  "n_witness_channels": 185,
+  "history": {
+    "train_loss": [
+      1.0010908842086792,
+      1.0001676082611084,
+      1.0000662803649902,
+      1.0000717639923096,
+      0.9999824166297913
+    ],
+    "val_loss": [
+      1.0002837181091309,
+      0.9999856352806091,
+      0.9999862313270569,
+      0.9999886155128479,
+      0.9999876022338867
+    ],
+    "attn_entropy": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

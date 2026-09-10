@@ -11,6 +11,20 @@ class ConvBlock(nn.Module):
     def forward(self, x: torch.Tensor):
         return self.act(self.bn(self.conv(x)))
 
+<<<<<<< HEAD
+class ConvBlock2(nn.Module): 
+    def __init__(self, cin: int, cout: int, dropout = 0.15):  
+        super().__init__()
+        self.conv = nn.Conv1d(cin, cout, kernel_size=7, stride=1, padding=3)
+        self.bn = nn.BatchNorm1d(cout)
+        self.act = nn.Tanh()
+        self.drop = nn.Dropout1d(dropout)
+    
+    def forward(self, x: torch.Tensor):
+        return self.drop(self.act(self.bn(self.conv(x))))
+
+=======
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 class PerChannelDownsampler(nn.Module): 
     """
     Downsample each channel separately using DeepClean methodology.
@@ -32,7 +46,12 @@ class PerChannelDownsampler(nn.Module):
         self.block5 = ConvBlock(64, 128)
         self.block6 = ConvBlock(128, 128)
         self.block7 = ConvBlock(128, 128)
+<<<<<<< HEAD
+        # self.block8 = ConvBlock2(128, 128)
+        # self.block9 = ConvBlock2(128, 128)
+=======
 
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
         # channel embedding projections 
         self.proj1 = nn.Linear(emb_dim, 8)
         self.proj2 = nn.Linear(emb_dim, 16)
@@ -41,6 +60,12 @@ class PerChannelDownsampler(nn.Module):
         self.proj5 = nn.Linear(emb_dim, 128)
         self.proj6 = nn.Linear(emb_dim, 128)
         self.proj7 = nn.Linear(emb_dim, 128)
+<<<<<<< HEAD
+        # self.proj8 = nn.Linear(emb_dim, 128)
+        # self.proj9 = nn.Linear(emb_dim, 128)
+        
+=======
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
        
     def add_channel_emb(
         self, 
@@ -103,6 +128,20 @@ class PerChannelDownsampler(nn.Module):
         y = y.reshape(B, C, 128, y.shape[-1])
         y = self.add_channel_emb(y, channel_emb, self.proj7)
 
+<<<<<<< HEAD
+        # Block 8
+        # y = y.reshape(B * C, 128, y.shape[-1])
+        # y = self.block8(y)                                 # (B*C, 128, T7)
+        # y = y.reshape(B, C, 128, y.shape[-1])
+        # y = self.add_channel_emb(y, channel_emb, self.proj8)
+        
+        # Block 9
+        # y = y.reshape(B * C, 128, y.shape[-1])
+        # y = self.block9(y)                                 # (B*C, 128, T7)
+        # y = y.reshape(B, C, 128, y.shape[-1])
+        # y = self.add_channel_emb(y, channel_emb, self.proj9)
+=======
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
         return y
 
 

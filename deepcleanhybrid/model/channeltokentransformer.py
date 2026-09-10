@@ -1,8 +1,20 @@
 import torch
 import torch.nn as nn
 
+<<<<<<< HEAD
+
+class AttnEncoderLayer(nn.Module):
+    def __init__(
+        self,
+        d_model,
+        nhead,
+        dim_feedforward=256,
+        dropout=0.1,
+    ):
+=======
 class AttnEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=256, dropout=0.1):
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
         super().__init__()
 
         self.self_attn = nn.MultiheadAttention(
@@ -26,6 +38,31 @@ class AttnEncoderLayer(nn.Module):
 
         self.last_attn = None
 
+<<<<<<< HEAD
+    def forward(self, x, save_attention=False):
+        attn_out, attn_weights = self.self_attn(
+            x,
+            x,
+            x,
+            need_weights=save_attention,
+            average_attn_weights=False,
+        )
+
+        if save_attention:
+            # Shape:
+            # (batch, num_heads, channels, channels)
+            self.last_attn = attn_weights.detach()
+        else:
+            self.last_attn = None
+
+        x = self.norm1(
+            x + self.dropout(attn_out)
+        )
+
+        x = self.norm2(
+            x + self.dropout(self.ff(x))
+        )
+=======
     def forward(self, x):
         attn_out, attn_weights = self.self_attn(
             x, x, x,
@@ -38,15 +75,23 @@ class AttnEncoderLayer(nn.Module):
 
         x = self.norm1(x + self.dropout(attn_out))
         x = self.norm2(x + self.dropout(self.ff(x)))
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
         return x
 
 
 class ChannelTokenTransformer(nn.Module):
     """
+<<<<<<< HEAD
+    Tokens are channels.
+
+    Input/output:
+        (batch, channels, d_model)
+=======
     Tokens: channels (sequence length C)
     Attention operates over channels
     Input/Output: (B, C, 1)
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
     """
 
     def __init__(
@@ -58,6 +103,16 @@ class ChannelTokenTransformer(nn.Module):
         dropout: float = 0.2,
     ):
         super().__init__()
+<<<<<<< HEAD
+
+        assert d_model % nhead == 0
+
+        self.layers = nn.ModuleList([
+            AttnEncoderLayer(
+                d_model=d_model,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+=======
         assert d_model % nhead == 0
         # layer = nn.TransformerEncoderLayer(
         #     d_model = d_model, nhead=nhead, 
@@ -73,10 +128,28 @@ class ChannelTokenTransformer(nn.Module):
                 d_model=d_model, 
                 nhead=nhead, 
                 dim_feedforward=dim_feedforward, 
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
                 dropout=dropout,
             )
             for _ in range(num_layers)
         ])
+<<<<<<< HEAD
+
+    def forward(self, z, save_attention=False):
+        for layer in self.layers:
+            z = layer(
+                z,
+                save_attention=save_attention,
+            )
+
+        return z
+
+    def get_attention(self):
+        return [
+            layer.last_attn
+            for layer in self.layers
+        ]
+=======
       
 
     def forward(self, Z):
@@ -92,3 +165,4 @@ class ChannelTokenTransformer(nn.Module):
     def get_attention(self): 
         return[layer.last_attn for layer in self.layers]
          
+>>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
