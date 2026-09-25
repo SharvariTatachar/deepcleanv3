@@ -229,37 +229,7 @@ set_seed(params.seed)
 print(f"Using seed: {params.seed}")
 # pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
 # params = pickle.load(open('dc_transform_train.p', 'rb'))['params']
-<<<<<<< HEAD
 
-
-# CHANNEL VOCABULARY 
-target_channel = "H1:GDS-CALIB_STRAIN"
-
-channels_file = params.chanslist 
-all_channels = [
-    ch for ch in load_channels(channels_file)
-    if ch != target_channel
-]
-baseline_channels = all_channels
-# baseline_channels = [
-#     ch for ch in load_channels("channelconfigs/ogchannels.ini")
-#     if ch != target_channel
-# ]
-
-noisy_pool = [] 
-for ch in all_channels: 
-    if ch not in baseline_channels: 
-        noisy_pool.append(ch)
-
-channel_to_id = {
-    ch: i for i, ch in enumerate(all_channels)
-}
-fixed_channel_ids = torch.arange(
-    len(all_channels), 
-    dtype=torch.long,
-)
-=======
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 
 # CHANNEL VOCABULARY 
@@ -353,10 +323,6 @@ val_data.read(
 
 train_data = train_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
 val_data = val_data.bandpass(params.filt_fl, params.filt_fh, params.filt_order, channels='target')
-<<<<<<< HEAD
-=======
-
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 # filter pad default from deepclean-prod, is 5: 
 
@@ -406,7 +372,6 @@ val_loader = DataLoader(
     drop_last=True)
     
 x, tgt = next(iter(train_loader))
-<<<<<<< HEAD
 # print("params.train_kernel:", params.train_kernel)
 # print("params.fs:", params.fs)
 # print("expected samples:", int(params.train_kernel * params.fs))
@@ -429,51 +394,6 @@ model = hy.HybridTransformerCNN(
     num_channel_ids=max(channel_to_id.values()) + 1,
 )
 
-=======
-print('x shape: ', x.shape)
-print("tgt shape:", tgt.shape)
-print("train_data.n_channels:", train_data.n_channels)
-print("len(all_channels):", len(all_channels))
-
-
-n_noisy = 0 # TODO: make this a parameter later 
-model_C = len(baseline_channels) + n_noisy
-print("model_C:", model_C)
-
-# selected_channels = baseline_channels
-
-# selected_indices = [
-#     channel_name_to_data_index[ch]
-#     for ch in selected_channels
-# ]
-
-# selected_ids = torch.tensor(
-#     [channel_to_id[ch] for ch in selected_channels],
-#     dtype=torch.long,
-#     device=device
-# )
-
-# x_sub = x[:, selected_indices, :].to(device)
-# channel_ids = selected_ids.unsqueeze(0).expand(x_sub.shape[0], -1)
-
-# print("x_sub shape:", x_sub.shape)
-# print("channel_ids shape:", channel_ids.shape)
-# print("first 5 selected channels:", selected_channels[:5])
-# print("first 5 channel ids:", channel_ids[0, :5])
-# print('len channel_to_id: ', len(channel_to_id), flush=True) 
-# print("max channel id:", max(channel_to_id.values()), flush=True)
-
-# print("Using utils from:", utils.__file__)
-
-# testing num layers 
-model = hy.HybridTransformerCNN(C=model_C, fs=params.fs, window_sec=8.0,
-                                       d_model=128, nhead=8, num_layers=3,
-                                       cnn_kernel=2, cnn_layers=7, n_iters=2,
-                                       num_channel_ids=max(channel_to_id.values())+1,
-                                )
-
-# model = dc.model.deepclean.DeepClean(train_data.n_channels-1)
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 model = model.to(device)
 
 criterion = dc.criterion.CompositePSDLoss(
@@ -492,7 +412,6 @@ criterion = dc.criterion.CompositePSDLoss(
 x = x.to(device)
 tgt = tgt.to(device)
 
-<<<<<<< HEAD
 channel_ids = (
     fixed_channel_ids.to(device)
     .unsqueeze(0)
@@ -558,22 +477,6 @@ history = utils.train(
     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
     dynamic_channels=False, all_channels=all_channels, baseline_channels=baseline_channels,
     noisy_pool=noisy_pool, channel_to_id=channel_to_id, fixed_channel_ids=fixed_channel_ids)
-=======
-# lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.1)
-lr_scheduler = optim.lr_scheduler.StepLR(optimizer, 10, 0.5)
-
-train_logger = dc.logger.Logger(outdir=params.train_dir, metrics=['loss'])
-# history = utils.train(
-#     train_loader, model, criterion, device, optimizer, lr_scheduler, 
-#     val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
-#     dynamic_channels=False, all_channels=all_channels, 
-#     baseline_channels=baseline_channels, noisy_pool=noisy_pool, 
-#     channel_to_id=channel_to_id)
-history = utils.train(
-    train_loader, model, criterion, device, optimizer, lr_scheduler, 
-    val_loader=val_loader, max_epochs=params.max_epochs, logger=train_logger, 
-    dynamic_channels=False, fixed_channel_ids=fixed_channel_ids)
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 run_data = {
     "run_name": os.path.basename(params.train_dir),
@@ -585,58 +488,8 @@ run_data = {
     "history": history,
 }
 
-<<<<<<< HEAD
 run_path = os.path.join(params.train_dir, "dc_pcc_run.json")
 with open(run_path, "w") as f:
     json.dump(run_data, f, indent=2)
 
 logging.info(f"Saved run data to {run_path}")
-=======
-run_path = os.path.join(params.train_dir, "dc_transform_run.json")
-with open(run_path, "w") as f:
-    json.dump(run_data, f, indent=2)
-
-logging.info(f"Saved run data to {run_path}")
-
-
-# eval_channels = baseline_channels + (random.sample(noisy_pool, 10))
-# model.eval()
-
-# test_loss = 0.0
-
-# with torch.no_grad():
-
-#     for x, y in test_loader:
-
-#         x = x.to(device)
-#         y = y.to(device)
-
-#         # keep baseline + new noisy channels
-#         x_eval = x[:, selected_idx, :]
-
-#         channel_ids = (
-#             torch.tensor(
-#                 selected_ids,
-#                 dtype=torch.long,
-#                 device=device,
-#             )
-#             .unsqueeze(0)
-#             .repeat(x_eval.shape[0], 1)
-#         )
-
-#         pred = model(
-#             x_eval,
-#             channel_ids=channel_ids,
-#         )
-
-#         loss = criterion(pred, y)
-
-#         test_loss += loss.item()
-
-# test_loss /= len(test_loader)
-
-# print(f"Eval loss = {test_loss:.6f}")
-
-
-   
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
