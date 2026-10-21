@@ -1,5 +1,5 @@
 import h5py
-import copy#
+import copy
 from collections import OrderedDict
 
 import numpy as np
