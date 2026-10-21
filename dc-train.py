@@ -396,21 +396,6 @@ if params.random_channels:
             f"combined_random_{params.n_random_witnesses}_seed{params.seed}.npz"
         )
 
-<<<<<<< HEAD
-=======
-    params.dataset_file, channels_file, channel_cfg = make_combined_npz_from_random_files(
-        dataset_dir=params.dataset_dir,
-        out_npz=params.random_subset_npz,
-        out_channels_ini=channels_file,
-        target_channel=TARGET_CHANNEL,
-        n_witnesses=params.n_random_witnesses,
-        seed=params.seed,
-    )
-
-    logging.info(f"Created combined random npz: {params.dataset_file}")
-    logging.info(f"Using generated channel file: {channels_file}")
-
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 elif params.channel_set_json is not None:
     run_channel_file = os.path.join(params.train_dir, "channels_selected.ini")
     channels_file, channel_cfg = make_channels_ini_from_json(
@@ -558,14 +543,6 @@ history = utils.train(
     val_loader=val_loader,
     max_epochs=params.max_epochs,
     logger=train_logger,
-<<<<<<< HEAD
-=======
-    dynamic_channels=False,
-    all_channels=all_channels,
-    baseline_channels=all_channels,
-    noisy_pool=None,
-    channel_to_id=channel_to_id,
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 )
 
 run_data = {
