@@ -51,8 +51,11 @@ out_dir/
 train_dir/
 metrics/
 data/
-runs*/
+runs_*/
 
 # Bash shell scripts 
 *.sbatch
 *.sh
+
+cls_sandbox/
+cls_sandbox/nanotabicl

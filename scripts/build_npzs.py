@@ -13,9 +13,10 @@ DATASET_DIR = Path("data/dataset")
 CHANNELCONFIG_DIR = Path("channelconfigs")
 OUT_DIR = Path("data/channel_ablation_npzs")
 
-# Change these paths if your directory names differ.
+# Combined NPZs for PCC baseline bands.
 CHANNEL_SETS = {
-    "add200low": Path("channelconfigs/110-130/granular/add200low.ini"),
+    "27.5-32.5": Path("channelconfigs/27.5-32.5/channels.ini"),
+    "176-184": Path("channelconfigs/176-184/channels.ini"),
 }
 
 TARGET = "H1:GDS-CALIB_STRAIN"
@@ -37,7 +38,6 @@ def canonical(ch):
 
 
 def channel_to_file(ch):
-<<<<<<< HEAD
     """
     Supports both original channel names:
 
@@ -49,9 +49,6 @@ def channel_to_file(ch):
     """
     filename = canonical(ch) + ".npz"
     return DATASET_DIR / filename
-=======
-    return DATASET_DIR / f"{ch.replace(':', '_').replace('-', '_')}.npz"
->>>>>>> 35a5e30607919fdd4a607b3fe50e782148c56d3d
 
 
 def load_channels(path):
@@ -269,15 +266,10 @@ def build_one(ini_path, out_npz):
 
 def discover_channel_sets():
     """
-    Build only the add200low and add400low channel sets.
-
-    Inputs:
-        channelconfigs/110-130/add200low.ini
-        channelconfigs/110-130/add400low.ini
+    Build the channel sets listed in CHANNEL_SETS.
 
     Outputs:
-        data/channel_ablation_npzs/110-130/add200low.npz
-        data/channel_ablation_npzs/110-130/add400low.npz
+        data/channel_ablation_npzs/<set_name>/<set_name>.npz
     """
     channel_sets = []
 
@@ -286,7 +278,7 @@ def discover_channel_sets():
             print(f"Warning: channel-config file does not exist: {ini_path}")
             continue
 
-        out_npz = OUT_DIR / "110-130" / f"{set_name}.npz"
+        out_npz = OUT_DIR / set_name / f"{set_name}.npz"
         channel_sets.append((ini_path, out_npz))
 
     return channel_sets

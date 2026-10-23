@@ -225,7 +225,6 @@ def parse_cmd():
     parser.add_argument(
         "--dataset-file",
         type=str,
-        default="/storage/home/hcoda1/3/statachar3/r-pli77-0/deepcleanv3/data/combined_data_updated.npz",
         help="Path to combined training dataset npz"
     )
 
