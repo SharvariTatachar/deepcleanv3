@@ -20,6 +20,7 @@ import deepcleanhybrid.criterion
 import deepcleanhybrid.model as model 
 import deepcleanhybrid.model.hybrid as hy
 import deepcleanhybrid.model.utils as utils
+import run_io
 
 
 def load_channels(path):
@@ -126,6 +127,7 @@ def parse_cmd():
     # input/output arguments
     parser.add_argument('--train-dir', help='Path to training directory',
                         type=str, default=None)
+    run_io.add_run_args(parser)
     parser.add_argument('--filename-training', help='Path to training dataset file (h5)', 
                         default=None, type=str)
     parser.add_argument('--filename-validation', help='Path to val dataset file (h5)',
@@ -150,8 +152,6 @@ def parse_cmd():
     c = cfg['config']
 
     # override missing CLI args from config file
-    if params.train_dir is None and 'train_dir' in c:
-        params.train_dir = c.get('train_dir')
     if params.log is None and 'log' in c:
         params.log = c.get('log')
     if params.device is None and 'device' in c:
@@ -212,8 +212,6 @@ def parse_cmd():
         params.load_dataset = c.getboolean('load_dataset')
 
     # final fallbacks
-    if params.train_dir is None:
-        params.train_dir = '.'
     if params.fs is None:
         params.fs = 2048
     if params.cnn_lr is None:
@@ -225,6 +223,7 @@ def parse_cmd():
 
 timestamp = int(time.time())
 params = parse_cmd()
+params.train_dir = run_io.resolve_train_dir(params, model_key="dct")
 set_seed(params.seed)  
 print(f"Using seed: {params.seed}")
 # pickle.dump({'params': params}, open('dc_transform_train.p', 'wb'))
@@ -295,6 +294,14 @@ else:
         handlers=[logging.StreamHandler()]
     )
 logging.info('Create training directory: {}'.format(params.train_dir))
+run_io.start_run(
+    params,
+    "DeepCleanTransform",
+    extra={
+        "channels_file": channels_file,
+        "n_witness_channels": len(all_channels),
+    },
+)
 
 BS = 8
 device = utils.get_device(params.device)
@@ -395,6 +402,7 @@ model = hy.HybridTransformerCNN(
 )
 
 model = model.to(device)
+run_io.update_metadata(params.train_dir, model=run_io.model_config(model))
 
 criterion = dc.criterion.CompositePSDLoss(
     fs=params.fs,
@@ -491,5 +499,15 @@ run_data = {
 run_path = os.path.join(params.train_dir, "dc_pcc_run.json")
 with open(run_path, "w") as f:
     json.dump(run_data, f, indent=2)
+
+run_io.finish_run(
+    params,
+    history=history,
+    model=model,
+    extra={
+        "channels_file": channels_file,
+        "n_witness_channels": len(all_channels),
+    },
+)
 
 logging.info(f"Saved run data to {run_path}")
