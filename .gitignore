@@ -51,6 +51,7 @@ out_dir/
 train_dir/
 metrics/
 data/
+runs/
 runs_*/
 
 # Bash shell scripts 

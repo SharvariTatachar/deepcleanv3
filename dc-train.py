@@ -17,6 +17,7 @@ import deepclean.timeseries as ts
 import deepclean.criterion
 import deepclean.model.utils as utils
 import deepclean.model.deepclean
+import run_io
 
 
 TARGET_CHANNEL = "H1:GDS-CALIB_STRAIN"
@@ -266,6 +267,7 @@ def parse_cmd():
     parser.add_argument("--mse-weight", type=float, default=None)
 
     parser.add_argument("--train-dir", type=str, default=None)
+    run_io.add_run_args(parser)
     parser.add_argument("--load-dataset", default=None, type=str2bool)
     parser.add_argument("--save-dataset", default=None, type=str2bool)
     parser.add_argument("--initial-checkpoint", default=None, type=str)
@@ -279,8 +281,6 @@ def parse_cmd():
     cfg.read(params.config)
     c = cfg["config"]
 
-    if params.train_dir is None and "train_dir" in c:
-        params.train_dir = c.get("train_dir")
     if params.log is None and "log" in c:
         params.log = c.get("log")
     if params.device is None and "device" in c:
@@ -328,8 +328,6 @@ def parse_cmd():
     if params.load_dataset is None and "load_dataset" in c:
         params.load_dataset = c.getboolean("load_dataset")
 
-    if params.train_dir is None:
-        params.train_dir = "."
     if params.fs is None:
         params.fs = 2048
     if params.overlap is None:
@@ -340,6 +338,7 @@ def parse_cmd():
 
 timestamp = int(time.time())
 params = parse_cmd()
+params.train_dir = run_io.resolve_train_dir(params, model_key="dc")
 set_seed(params.seed)
 
 print(f"Using seed: {params.seed}")
@@ -386,6 +385,7 @@ val_data = ts.TimeSeriesSegmentDataset(
     fs=params.fs,
 )
 
+channel_cfg = None
 if params.random_channels:
     channels_file = os.path.join(params.train_dir, "channels_random.ini")
 
@@ -404,8 +404,13 @@ elif params.channel_set_json is not None:
 
 else:
     channels_file = params.chanslist or "ogchannels.ini"
-    channel_cfg = None
 
+
+run_io.start_run(
+    params,
+    "DeepClean",
+    extra={"channels_file": channels_file, "channel_set_metadata": channel_cfg},
+)
 
 # Read train/validation data
 train_data.read(
@@ -501,6 +506,7 @@ logging.info(f"Batch target shape: {tgt.shape}")
 # Original DeepClean model
 model = dc.model.deepclean.DeepClean(train_data.n_channels - 1)
 model = model.to(device)
+run_io.update_metadata(params.train_dir, model=run_io.model_config(model))
 
 criterion = dc.criterion.CompositePSDLoss(
     fs=params.fs,
@@ -567,5 +573,12 @@ run_data = {
 run_path = os.path.join(params.train_dir, "dc_run.json")
 with open(run_path, "w") as f:
     json.dump(run_data, f, indent=2)
+
+run_io.finish_run(
+    params,
+    history=history,
+    model=model,
+    extra={"channels_file": channels_file, "channel_set_metadata": channel_cfg},
+)
 
 logging.info(f"Saved run data to {run_path}")
